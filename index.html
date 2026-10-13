@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Sudoku</title>
+    <link rel="icon" type="favicon/png" href="favicon.png">
+	<link rel="apple-touch-icon" href="favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none; 
+        }
+
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            transition: all 0.2s ease-out;
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        
+        .fade-enter {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease-out;
+        }
+        .fade-enter-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .board-container {
+            width: 100%;
+            max-width: min(100%, calc(100dvh - 230px)); 
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .board-outer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 3px; 
+            background-color: #171717; 
+            padding: 3px; 
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .board-inner {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1px; 
+            background-color: #171717;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .sudoku-cell {
+            background-color: #ffffff;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.1s;
+            overflow: hidden;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* --- Cell Background Colors & Blended Highlights --- */
+        
+        .sudoku-cell.prefilled-bg {
+            background-color: #f1f5f9; /* Base Grey for preset numbers */
+        }
+
+        .sudoku-cell.highlight-area {
+            background-color: #FEE2E2; /* Base Red-100 highlight */
+        }
+        .sudoku-cell.prefilled-bg.highlight-area {
+            background-color: #F1D4DA; /* Grey blended with Red-100 overlay */
+        }
+
+        .sudoku-cell.selected {
+            background-color: #FCA5A5 !important; 
+        }
+        .sudoku-cell.prefilled-bg.selected {
+            background-color: #E89A9C !important; /* Grey blended with selection highlight */
+        }
+        
+        .sudoku-cell.highlight-identical {
+            background-color: #F87171 !important; 
+        }
+        .sudoku-cell.prefilled-bg.highlight-identical {
+            background-color: #E06769 !important; /* Grey blended with identical highlight */
+        }
+
+        .sudoku-cell.conflict {
+            background-color: #E57373 !important; 
+        }
+        .sudoku-cell.prefilled-bg.conflict {
+            background-color: #D1686B !important; /* Grey blended with conflict highlight */
+        }
+
+        /* Font color overrides for highly contrasted areas */
+        .sudoku-cell.highlight-identical .cell-value,
+        .sudoku-cell.highlight-identical .note-num,
+        .sudoku-cell.conflict .cell-value {
+            color: #ffffff !important; 
+        }
+
+        .cell-value {
+            font-size: clamp(18px, 7cqi, 34px); 
+            font-weight: 500;
+            z-index: 2;
+            position: relative;
+        }
+
+        .cell-value.prefilled {
+            color: #000000; 
+        }
+
+        .cell-value.user-input {
+            color: #334155; 
+        }
+
+        .notes-grid {
+            position: absolute;
+            inset: 2px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .note-num {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(8px, 2.5cqi, 14px);
+            color: #64748b; 
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .note-num.highlight-identical {
+            color: #b91c1c;
+            font-weight: 800;
+        }
+
+        .locked-mode {
+            color: #b91c1c;
+            font-weight: 700;
+            position: relative;
+            background-color: #fee2e2;
+            border-radius: 8px;
+        }
+
+        .toggle-active {
+            color: #b91c1c;
+            background-color: #fee2e2;
+        }
+        
+        .numpad-btn {
+            transition: transform 0.1s, opacity 0.1s;
+            touch-action: none; 
+        }
+        .numpad-btn.exhausted {
+            opacity: 0.25;
+            pointer-events: none;
+        }
+        .numpad-btn:active {
+            transform: scale(0.85);
+            opacity: 0.7;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-800 h-[100dvh] w-screen overflow-hidden flex flex-col select-none touch-none">
+
+    <div class="w-full max-w-lg mx-auto flex flex-col h-full pt-2 pb-6 relative">
+        
+        <!-- Header (H1) -->
+        <header class="flex justify-between items-center mb-5 shrink-0 px-4">
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 flex items-center gap-2">
+                Sudoku, by the OCs <i class="fa-brands fa-canadian-maple-leaf text-red-600"></i>
+            </h1>
+            <div class="flex gap-2 items-center relative">
+                <button id="btn-settings" class="text-slate-600 hover:text-slate-900 p-2 transition-colors">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+                <button id="btn-pause-h1" class="text-slate-600 hover:text-slate-900 p-2 transition-colors">
+                    <i class="fas fa-pause text-xl"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Bar (H2) -->
+        <div class="flex justify-between items-center mb-1 shrink-0 px-6 w-full text-slate-600">
+            <div class="flex items-center justify-center gap-2 w-1/3">
+                <i class="fas fa-trophy text-slate-400"></i>
+                <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
+            </div>
+            <div class="flex flex-col items-center w-1/3">
+                <span id="stat-diff" class="text-base sm:text-lg font-bold tracking-widest text-red-700">Easy</span>
+            </div>
+            <div class="flex items-center justify-center gap-2 w-1/3">
+                <i class="fas fa-clock text-slate-400"></i>
+                <span id="stat-time" class="font-mono text-sm sm:text-base font-medium text-slate-800">00:00</span>
+            </div>
+        </div>
+
+        <!-- Board Wrapper -->
+        <div class="flex-grow flex items-center justify-center min-h-0 mb-2 w-full px-2" style="container-type: inline-size;">
+            <div class="board-container">
+                <div id="sudoku-board" class="board-outer">
+                    <!-- 9 Blocks generated by JS -->
+                </div>
+                
+                <!-- Pause Overlay -->
+                <div id="pause-overlay" class="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center hidden">
+                    <span class="text-3xl font-bold tracking-widest text-slate-800 mb-8">PAUSED</span>
+                    <button id="btn-resume-overlay" class="bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 hover:bg-red-700 transition-colors">
+                        <i class="fas fa-play mr-2"></i> Resume
+                    </button>
+                    <button id="btn-reset-overlay" class="text-slate-500 font-medium p-3 hover:text-slate-800 transition-colors flex items-center gap-2">
+                        <i class="fas fa-rotate-left"></i> Reset Puzzle
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="shrink-0 flex flex-col gap-4 sm:gap-6 w-full">
+            <!-- Upper Control Line: Undo, Erase, Notes -->
+            <div class="flex justify-around items-center px-6">
+                <button id="btn-undo" class="flex flex-col items-center gap-1.5 text-slate-500 hover:text-slate-700 p-2 rounded-xl transition-colors">
+                    <i class="fas fa-undo text-xl sm:text-2xl"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider">Undo</span>
+                </button>
+                <button id="btn-erase" class="flex flex-col items-center gap-1.5 text-slate-500 hover:text-slate-700 p-2 rounded-xl transition-colors">
+                    <i class="fas fa-eraser text-xl sm:text-2xl"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider">Erase</span>
+                </button>
+                <button id="btn-notes" class="flex flex-col items-center gap-1.5 text-slate-500 hover:text-red-600 p-2 rounded-xl transition-colors">
+                    <i class="fas fa-pen text-xl sm:text-2xl"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider">Notes</span>
+                </button>
+            </div>
+
+            <!-- Lower Control Line: Keypad -->
+            <div class="flex justify-between items-center px-3" id="keypad">
+                <!-- Keys 1-9 generated by JS -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reset Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
+        <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Reset Puzzle?</h3>
+            <p class="text-sm text-slate-500 mb-6">This will clear all your answers and notes, and reset the timer back to zero.</p>
+            <div class="flex gap-3">
+                <button id="btn-confirm-cancel" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
+                <button id="btn-confirm-yes" class="flex-1 bg-red-600 text-white font-bold py-3.5 rounded-xl hover:bg-red-700 transition-colors">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-end sm:items-center justify-center modal-enter">
+        <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto flex flex-col shadow-2xl">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
+                <h2 class="text-xl font-bold text-slate-800">Settings</h2>
+                <button id="close-settings" class="p-2 text-slate-400 hover:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="p-6 flex flex-col gap-8">
+                <!-- Difficulty -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Difficulty</h3>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button class="diff-btn active bg-red-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm" data-diff="easy">Easy</button>
+                        <button class="diff-btn bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors" data-diff="medium">Medium</button>
+                        <button class="diff-btn bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors" data-diff="hard">Hard</button>
+                        <button class="diff-btn bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors" data-diff="expert">Expert</button>
+                    </div>
+                </div>
+
+                <!-- Toggles -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Highlighting Options</h3>
+                    <div class="flex flex-col gap-4">
+                        <label class="flex justify-between items-center cursor-pointer">
+                            <span class="font-medium text-slate-700">Highlight Rows</span>
+                            <input type="checkbox" id="toggle-row" class="w-5 h-5 accent-red-600" checked>
+                        </label>
+                        <label class="flex justify-between items-center cursor-pointer">
+                            <span class="font-medium text-slate-700">Highlight Columns</span>
+                            <input type="checkbox" id="toggle-col" class="w-5 h-5 accent-red-600" checked>
+                        </label>
+                        <label class="flex justify-between items-center cursor-pointer">
+                            <span class="font-medium text-slate-700">Highlight Boxes</span>
+                            <input type="checkbox" id="toggle-box" class="w-5 h-5 accent-red-600" checked>
+                        </label>
+                        <label class="flex justify-between items-center cursor-pointer">
+                            <span class="font-medium text-slate-700">Highlight Identical Numbers</span>
+                            <input type="checkbox" id="toggle-ident" class="w-5 h-5 accent-red-600" checked>
+                        </label>
+                        <label class="flex justify-between items-center cursor-pointer">
+                            <span class="font-medium text-slate-700">Highlight Conflicts</span>
+                            <input type="checkbox" id="toggle-conflict" class="w-5 h-5 accent-red-600" checked>
+                        </label>
+                    </div>
+                </div>
+
+                <button id="btn-new-game" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl text-lg shadow-md hover:bg-red-700 transition-colors">
+                    Start New Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="win-modal" class="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center modal-enter">
+        <div class="text-center px-6 max-w-sm w-full">
+            <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <i class="fas fa-trophy text-5xl text-red-600"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-2">Puzzle Solved!</h2>
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8">
+                <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold text-red-600"></span></p>
+                <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Time: <span id="win-time" class="font-mono font-bold text-slate-800 text-lg"></span></p>
+            </div>
+            
+            <button id="btn-win-new" class="w-full bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 hover:bg-red-700 transition-colors">
+                Play Another
+            </button>
+            <button id="btn-win-close" class="text-slate-500 font-medium p-3 hover:text-slate-800 transition-colors">
+                View Completed Board
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class SudokuGenerator {
+            constructor() {
+                this.N = 9;
+                this.SRN = 3;
+            }
+
+            generate(K) {
+                this.mat = Array.from({length: this.N}, () => Array(this.N).fill(0));
+                this.fillValues();
+                let solution = this.mat.map(row => [...row]);
+                this.removeKDigits(K);
+                return { puzzle: this.mat, solution: solution };
+            }
+
+            fillValues() {
+                this.fillDiagonal();
+                this.fillRemaining(0, this.SRN);
+            }
+
+            fillDiagonal() {
+                for (let i = 0; i < this.N; i = i + this.SRN) this.fillBox(i, i);
+            }
+
+            unUsedInBox(rowStart, colStart, num) {
+                for (let i = 0; i < this.SRN; i++) {
+                    for (let j = 0; j < this.SRN; j++) {
+                        if (this.mat[rowStart + i][colStart + j] === num) return false;
+                    }
+                }
+                return true;
+            }
+
+            fillBox(rowStart, colStart) {
+                let num;
+                for (let i = 0; i < this.SRN; i++) {
+                    for (let j = 0; j < this.SRN; j++) {
+                        do {
+                            num = Math.floor(Math.random() * this.N + 1);
+                        } while (!this.unUsedInBox(rowStart, colStart, num));
+                        this.mat[rowStart + i][colStart + j] = num;
+                    }
+                }
+            }
+
+            checkIfSafe(i, j, num) {
+                return (
+                    this.unUsedInRow(i, num) &&
+                    this.unUsedInCol(j, num) &&
+                    this.unUsedInBox(i - (i % this.SRN), j - (j % this.SRN), num)
+                );
+            }
+
+            unUsedInRow(i, num) {
+                for (let j = 0; j < this.N; j++) {
+                    if (this.mat[i][j] === num) return false;
+                }
+                return true;
+            }
+
+            unUsedInCol(j, num) {
+                for (let i = 0; i < this.N; i++) {
+                    if (this.mat[i][j] === num) return false;
+                }
+                return true;
+            }
+
+            fillRemaining(i, j) {
+                if (j >= this.N && i < this.N - 1) { i = i + 1; j = 0; }
+                if (i >= this.N && j >= this.N) return true;
+                if (i < this.SRN) {
+                    if (j < this.SRN) j = this.SRN;
+                } else if (i < this.N - this.SRN) {
+                    if (j === Math.floor(i / this.SRN) * this.SRN) j = j + this.SRN;
+                } else {
+                    if (j === this.N - this.SRN) {
+                        i = i + 1; j = 0;
+                        if (i >= this.N) return true;
+                    }
+                }
+
+                for (let num = 1; num <= this.N; num++) {
+                    if (this.checkIfSafe(i, j, num)) {
+                        this.mat[i][j] = num;
+                        if (this.fillRemaining(i, j + 1)) return true;
+                        this.mat[i][j] = 0;
+                    }
+                }
+                return false;
+            }
+
+            countSolutions(grid, count) {
+                let row = -1, col = -1, isEmpty = false;
+                for(let i=0; i<9; i++) {
+                    for(let j=0; j<9; j++) {
+                        if(grid[i][j] === 0) { row = i; col = j; isEmpty = true; break; }
+                    }
+                    if(isEmpty) break;
+                }
+                
+                if(!isEmpty) return count + 1;
+
+                for(let num=1; num<=9; num++) {
+                    if(this.isSafeForSolver(grid, row, col, num)) {
+                        grid[row][col] = num;
+                        count = this.countSolutions(grid, count);
+                        grid[row][col] = 0;
+                        if(count > 1) return count;
+                    }
+                }
+                return count;
+            }
+
+            isSafeForSolver(grid, row, col, num) {
+                for(let x=0; x<9; x++) if(grid[row][x] === num) return false;
+                for(let x=0; x<9; x++) if(grid[x][col] === num) return false;
+                let startRow = row - row % 3, startCol = col - col % 3;
+                for(let i=0; i<3; i++) {
+                    for(let j=0; j<3; j++) {
+                        if(grid[i + startRow][j + startCol] === num) return false;
+                    }
+                }
+                return true;
+            }
+
+            removeKDigits(K) {
+                let positions = [];
+                for(let i=0; i<81; i++) positions.push(i);
+                for(let i=positions.length-1; i>0; i--) {
+                    const j = Math.floor(Math.random() * (i+1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+
+                let removed = 0;
+                for(let i=0; i<81 && removed < K; i++) {
+                    let cellId = positions[i];
+                    let r = Math.floor(cellId / 9);
+                    let c = cellId % 9;
+                    if (this.mat[r][c] !== 0) {
+                        let backup = this.mat[r][c];
+                        this.mat[r][c] = 0;
+                        let copy = this.mat.map(row => [...row]);
+                        if (this.countSolutions(copy, 0) !== 1) {
+                            this.mat[r][c] = backup; 
+                        } else {
+                            removed++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- GLOBAL STATE ---
+        const UI = {
+            board: document.getElementById('sudoku-board'),
+            keypad: document.getElementById('keypad'),
+            timer: document.getElementById('stat-time'),
+            record: document.getElementById('stat-record'),
+            diffDisplay: document.getElementById('stat-diff'),
+            
+            btnUndo: document.getElementById('btn-undo'),
+            btnErase: document.getElementById('btn-erase'),
+            btnNotes: document.getElementById('btn-notes'),
+            
+            btnSettings: document.getElementById('btn-settings'),
+            btnPauseH1: document.getElementById('btn-pause-h1'),
+            btnResumeOverlay: document.getElementById('btn-resume-overlay'),
+            btnResetOverlay: document.getElementById('btn-reset-overlay'),
+            
+            settingsModal: document.getElementById('settings-modal'),
+            btnCloseSettings: document.getElementById('close-settings'),
+            btnNewGame: document.getElementById('btn-new-game'),
+            diffBtns: document.querySelectorAll('.diff-btn'),
+            
+            confirmModal: document.getElementById('confirm-modal'),
+            btnConfirmYes: document.getElementById('btn-confirm-yes'),
+            btnConfirmCancel: document.getElementById('btn-confirm-cancel'),
+            
+            toggles: {
+                row: document.getElementById('toggle-row'),
+                col: document.getElementById('toggle-col'),
+                box: document.getElementById('toggle-box'),
+                ident: document.getElementById('toggle-ident'),
+                conflict: document.getElementById('toggle-conflict'),
+            },
+
+            winModal: document.getElementById('win-modal'),
+            btnWinNew: document.getElementById('btn-win-new'),
+            btnWinClose: document.getElementById('btn-win-close'),
+            winDiff: document.getElementById('win-diff'),
+            winTime: document.getElementById('win-time'),
+
+            cells: [] 
+        };
+
+        const difficulties = { easy: 30, medium: 45, hard: 55, expert: 64 };
+        const SAVE_KEY = 'sudoku_save_state_oc';
+
+        const State = {
+            diff: 'easy',
+            grid: [], 
+            solution: [],
+            selected: null, 
+            lockedNumber: null,
+            notesMode: false,
+            history: [],
+            timerInterval: null,
+            isWon: false,
+            isPaused: false,
+            accumulatedTime: 0,
+            lastStartTime: 0,
+            topTimes: { easy: [], medium: [], hard: [], expert: [] } 
+        };
+
+        // --- CORE FUNCTIONS ---
+        function loadTopTimes() {
+            try {
+                const saved = localStorage.getItem('sudoku_top_times_oc');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    Object.keys(State.topTimes).forEach(k => {
+                        if (parsed[k]) State.topTimes[k] = parsed[k];
+                    });
+                }
+            } catch(e){}
+        }
+
+        function saveTopTimes() {
+            try {
+                localStorage.setItem('sudoku_top_times_oc', JSON.stringify(State.topTimes));
+            } catch(e){}
+        }
+
+        function saveGameState() {
+            if (State.isWon) {
+                localStorage.removeItem(SAVE_KEY);
+                return;
+            }
+            
+            let currentTime = State.accumulatedTime;
+            if (!State.isPaused && State.lastStartTime) {
+                currentTime += (Date.now() - State.lastStartTime);
+            }
+
+            const saveData = {
+                diff: State.diff,
+                grid: State.grid,
+                solution: State.solution,
+                history: State.history,
+                accumulatedTime: currentTime,
+                notesMode: State.notesMode
+            };
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+            } catch(e) {}
+        }
+
+        function loadGameState() {
+            try {
+                const saved = localStorage.getItem(SAVE_KEY);
+                if (saved) return JSON.parse(saved);
+            } catch(e) {}
+            return null;
+        }
+
+        function restoreGameState(data) {
+            State.diff = data.diff;
+            State.grid = data.grid;
+            State.solution = data.solution;
+            State.history = data.history || [];
+            State.accumulatedTime = data.accumulatedTime || 0;
+            State.notesMode = data.notesMode || false;
+            
+            State.selected = null;
+            State.isWon = false;
+            State.isPaused = true; 
+            State.lockedNumber = null;
+            
+            UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
+            UI.btnNotes.classList.toggle('text-slate-500', !State.notesMode);
+
+            UI.settingsModal.classList.remove('modal-enter-active');
+            UI.winModal.classList.remove('modal-enter-active');
+            
+            UI.diffBtns.forEach(b => {
+                b.classList.remove('bg-red-700', 'text-white', 'shadow-sm');
+                b.classList.add('bg-slate-100', 'text-slate-600');
+                if(b.dataset.diff === State.diff) {
+                    b.classList.remove('bg-slate-100', 'text-slate-600');
+                    b.classList.add('bg-red-700', 'text-white', 'shadow-sm');
+                }
+            });
+
+            updateHeaderUI();
+            
+            State.lastStartTime = Date.now();
+            clearInterval(State.timerInterval);
+            UI.timer.textContent = formatTime(State.accumulatedTime);
+            
+            document.getElementById('pause-overlay').style.display = 'flex';
+            UI.btnPauseH1.innerHTML = '<i class="fas fa-play text-xl"></i>';
+
+            renderBoard();
+        }
+
+        function init() {
+            loadTopTimes();
+            buildBoardDOM();
+            buildKeypadDOM();
+            setupEventListeners();
+            
+            const savedState = loadGameState();
+            if (savedState) {
+                restoreGameState(savedState);
+            } else {
+                startNewGame();
+            }
+        }
+
+        function buildBoardDOM() {
+            UI.board.innerHTML = '';
+            UI.cells = Array.from({length: 9}, () => Array(9).fill(null));
+
+            for (let br = 0; br < 3; br++) {
+                for (let bc = 0; bc < 3; bc++) {
+                    const block = document.createElement('div');
+                    block.className = 'board-inner';
+                    
+                    for (let cr = 0; cr < 3; cr++) {
+                        for (let cc = 0; cc < 3; cc++) {
+                            const r = br * 3 + cr;
+                            const c = bc * 3 + cc;
+                            
+                            const cell = document.createElement('div');
+                            cell.className = 'sudoku-cell';
+                            cell.dataset.r = r;
+                            cell.dataset.c = c;
+
+                            const valSpan = document.createElement('span');
+                            valSpan.className = 'cell-value';
+                            cell.appendChild(valSpan);
+
+                            const notesGrid = document.createElement('div');
+                            notesGrid.className = 'notes-grid';
+                            for (let n = 1; n <= 9; n++) {
+                                const noteSpan = document.createElement('span');
+                                noteSpan.className = 'note-num';
+                                noteSpan.dataset.n = n;
+                                notesGrid.appendChild(noteSpan);
+                            }
+                            cell.appendChild(notesGrid);
+
+                            block.appendChild(cell);
+                            UI.cells[r][c] = { root: cell, valEl: valSpan, notesEl: notesGrid };
+                        }
+                    }
+                    UI.board.appendChild(block);
+                }
+            }
+        }
+
+        function buildKeypadDOM() {
+            UI.keypad.innerHTML = '';
+            for (let i = 1; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'numpad-btn text-3xl sm:text-[40px] text-slate-700 font-medium w-10 sm:w-12 h-14 flex items-center justify-center';
+                btn.textContent = i;
+                btn.dataset.val = i;
+                UI.keypad.appendChild(btn);
+            }
+        }
+
+        function startNewGame() {
+            const K = difficulties[State.diff];
+            const gen = new SudokuGenerator();
+            const data = gen.generate(K);
+
+            State.solution = data.solution;
+            State.grid = [];
+            
+            for (let r = 0; r < 9; r++) {
+                let row = [];
+                for (let c = 0; c < 9; c++) {
+                    const val = data.puzzle[r][c];
+                    row.push({
+                        val: val,
+                        initial: val !== 0,
+                        notes: Array(10).fill(false)
+                    });
+                }
+                State.grid.push(row);
+            }
+
+            State.selected = null;
+            State.history = [];
+            State.isWon = false;
+            
+            if (State.isPaused) togglePause();
+            
+            UI.settingsModal.classList.remove('modal-enter-active');
+            UI.winModal.classList.remove('modal-enter-active');
+            
+            updateHeaderUI();
+            resetTimer();
+            renderBoard();
+            saveGameState();
+        }
+
+        function updateHeaderUI() {
+            UI.diffDisplay.textContent = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            const times = State.topTimes[State.diff];
+            UI.record.textContent = times.length > 0 ? formatTime(times[0]) : '--:--';
+        }
+
+        function resetTimer() {
+            State.accumulatedTime = 0;
+            State.lastStartTime = Date.now();
+            clearInterval(State.timerInterval);
+            State.timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            if (State.isPaused || State.isWon) return;
+            const ms = State.accumulatedTime + (Date.now() - State.lastStartTime);
+            UI.timer.textContent = formatTime(ms);
+        }
+
+        function togglePause() {
+            if (State.isWon) return;
+            State.isPaused = !State.isPaused;
+            const overlay = document.getElementById('pause-overlay');
+            
+            if (State.isPaused) {
+                State.accumulatedTime += (Date.now() - State.lastStartTime);
+                clearInterval(State.timerInterval);
+                overlay.style.display = 'flex';
+                UI.btnPauseH1.innerHTML = '<i class="fas fa-play text-xl"></i>';
+            } else {
+                State.lastStartTime = Date.now();
+                State.timerInterval = setInterval(updateTimerDisplay, 1000);
+                overlay.style.display = 'none';
+                UI.btnPauseH1.innerHTML = '<i class="fas fa-pause text-xl"></i>';
+            }
+        }
+
+        function confirmReset() {
+            UI.confirmModal.classList.add('fade-enter-active');
+        }
+
+        function executeReset() {
+            for(let r=0; r<9; r++) {
+                for(let c=0; c<9; c++) {
+                    const cell = State.grid[r][c];
+                    if(!cell.initial) {
+                        cell.val = 0;
+                        cell.notes = Array(10).fill(false);
+                    }
+                }
+            }
+            State.history = [];
+            State.selected = null;
+            
+            if (State.isPaused) togglePause();
+            resetTimer();
+            renderBoard();
+            
+            UI.confirmModal.classList.remove('fade-enter-active');
+            saveGameState();
+        }
+
+        function formatTime(ms) {
+            const totalSec = Math.floor(ms / 1000);
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function renderBoard() {
+            const conflicts = getConflicts();
+            
+            let highlightVal = null;
+            if (State.lockedNumber !== null) {
+                highlightVal = State.lockedNumber;
+            } else if (State.selected && UI.toggles.ident.checked) {
+                const selCell = State.grid[State.selected.r][State.selected.c];
+                if (selCell.val !== 0) highlightVal = selCell.val;
+            }
+
+            let counts = Array(10).fill(0);
+
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const data = State.grid[r][c];
+                    if (data.val !== 0) counts[data.val]++;
+                    const uiCell = UI.cells[r][c];
+                    const root = uiCell.root;
+                    
+                    root.className = 'sudoku-cell';
+                    if (data.initial) root.classList.add('prefilled-bg');
+                    
+                    if (data.val !== 0) {
+                        uiCell.valEl.textContent = data.val;
+                        uiCell.valEl.className = `cell-value ${data.initial ? 'prefilled' : 'user-input'}`;
+                        uiCell.notesEl.style.display = 'none';
+                    } else {
+                        uiCell.valEl.textContent = '';
+                        uiCell.notesEl.style.display = 'grid';
+                        
+                        const noteSpans = uiCell.notesEl.children;
+                        for (let i = 1; i <= 9; i++) {
+                            const span = noteSpans[i-1];
+                            span.textContent = data.notes[i] ? i : '';
+                            
+                            if (data.notes[i] && highlightVal === i && UI.toggles.ident.checked) {
+                                span.classList.add('highlight-identical');
+                            } else {
+                                span.classList.remove('highlight-identical');
+                            }
+                        }
+                    }
+
+                    if (State.selected) {
+                        const isSameRow = r === State.selected.r;
+                        const isSameCol = c === State.selected.c;
+                        const isSameBox = Math.floor(r/3) === Math.floor(State.selected.r/3) && 
+                                          Math.floor(c/3) === Math.floor(State.selected.c/3);
+                        
+                        let areaHighlight = false;
+                        if (UI.toggles.row.checked && isSameRow) areaHighlight = true;
+                        if (UI.toggles.col.checked && isSameCol) areaHighlight = true;
+                        if (UI.toggles.box.checked && isSameBox) areaHighlight = true;
+
+                        if (areaHighlight) root.classList.add('highlight-area');
+                        if (isSameRow && isSameCol) {
+                            root.classList.remove('highlight-area');
+                            root.classList.add('selected');
+                        }
+                    }
+
+                    if (highlightVal !== null && data.val === highlightVal) {
+                        root.classList.add('highlight-identical');
+                    }
+
+                    if (UI.toggles.conflict.checked && conflicts[r][c]) {
+                        root.classList.add('conflict');
+                    }
+                }
+            }
+
+            document.querySelectorAll('.numpad-btn').forEach(btn => {
+                const val = parseInt(btn.dataset.val);
+                if (counts[val] >= 9) btn.classList.add('exhausted');
+                else btn.classList.remove('exhausted');
+            });
+        }
+
+        function getConflicts() {
+            let conflicts = Array.from({length: 9}, () => Array(9).fill(false));
+            if (!UI.toggles.conflict.checked) return conflicts;
+
+            for(let r=0; r<9; r++) {
+               for(let c=0; c<9; c++) {
+                   const v = State.grid[r][c].val;
+                   if (v === 0) continue;
+                   
+                   for(let i=0; i<9; i++) {
+                       if(i !== c && State.grid[r][i].val === v) { conflicts[r][c] = true; conflicts[r][i] = true; }
+                       if(i !== r && State.grid[i][c].val === v) { conflicts[r][c] = true; conflicts[i][c] = true; }
+                   }
+                   let br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+                   for(let i=0; i<3; i++) {
+                       for(let j=0; j<3; j++) {
+                           let rr = br+i, cc = bc+j;
+                           if ((rr !== r || cc !== c) && State.grid[rr][cc].val === v) {
+                               conflicts[r][c] = true; conflicts[rr][cc] = true;
+                           }
+                       }
+                   }
+               }
+            }
+            return conflicts;
+        }
+
+        function saveHistory() {
+            State.history.push(JSON.parse(JSON.stringify(State.grid)));
+        }
+
+        function getBoardCounts() {
+            let counts = Array(10).fill(0);
+            for(let r=0; r<9; r++) {
+                for(let c=0; c<9; c++) {
+                    if(State.grid[r][c].val !== 0) counts[State.grid[r][c].val]++;
+                }
+            }
+            return counts;
+        }
+
+        function unlockNumber() {
+            State.lockedNumber = null;
+            document.querySelectorAll('.numpad-btn').forEach(k => k.classList.remove('locked-mode'));
+        }
+
+        function lockNumber(val) {
+            State.lockedNumber = val;
+            const keys = document.querySelectorAll('.numpad-btn');
+            keys.forEach(k => k.classList.remove('locked-mode'));
+            const btn = document.querySelector(`.numpad-btn[data-val="${val}"]`);
+            if(btn) btn.classList.add('locked-mode');
+            
+            if (State.selected) {
+                const cell = State.grid[State.selected.r][State.selected.c];
+                if (cell.val !== val) {
+                    State.selected = null;
+                }
+            }
+            
+            renderBoard();
+        }
+
+        function handleCellClick(r, c) {
+            if (State.isWon || State.isPaused) return;
+
+            const cell = State.grid[r][c];
+
+            // Toggle selection logically or update to newest tap
+            if (State.selected && State.selected.r === r && State.selected.c === c && State.lockedNumber === null) {
+                State.selected = null;
+            } else {
+                State.selected = {r, c};
+            }
+
+            if (State.lockedNumber !== null) {
+                if (cell.val !== 0) {
+                    lockNumber(cell.val);
+                } else {
+                    applyInput(State.lockedNumber, r, c);
+                }
+                return;
+            }
+
+            renderBoard();
+        }
+
+        function applyInput(val, r = null, c = null) {
+            if (State.isWon || State.isPaused) return;
+            
+            const targetR = r !== null ? r : (State.selected ? State.selected.r : null);
+            const targetC = c !== null ? c : (State.selected ? State.selected.c : null);
+            
+            if (targetR === null || targetC === null) return;
+            
+            const cell = State.grid[targetR][targetC];
+
+            if (val === 0) {
+                unlockNumber();
+                if (cell.initial) {
+                    renderBoard();
+                    return; 
+                }
+                saveHistory();
+                if (cell.val !== 0) cell.val = 0;
+                else cell.notes = Array(10).fill(false);
+            } else {
+                if (cell.initial) return;
+                saveHistory();
+                
+                if (State.notesMode) {
+                    if (cell.val === 0) cell.notes[val] = !cell.notes[val];
+                } else {
+                    cell.val = (cell.val === val) ? 0 : val; 
+                    if (cell.val !== 0) {
+                        for(let i=0; i<9; i++) {
+                            State.grid[targetR][i].notes[val] = false;
+                            State.grid[i][targetC].notes[val] = false;
+                        }
+                        let br = Math.floor(targetR/3)*3;
+                        let bc = Math.floor(targetC/3)*3;
+                        for(let i=0; i<3; i++) {
+                            for(let j=0; j<3; j++) {
+                                State.grid[br+i][bc+j].notes[val] = false;
+                            }
+                        }
+
+                        let counts = getBoardCounts();
+                        if (counts[val] === 9 && State.lockedNumber === val) {
+                            let nextVal = null;
+                            for(let i=1; i<=9; i++) {
+                                let testVal = ((val + i - 1) % 9) + 1;
+                                if (counts[testVal] < 9) {
+                                    nextVal = testVal; break;
+                                }
+                            }
+                            if (nextVal !== null) lockNumber(nextVal);
+                            else unlockNumber();
+                        }
+                    } else {
+                        unlockNumber();
+                    }
+                }
+            }
+
+            renderBoard();
+            saveGameState();
+            if (val !== 0 && !State.notesMode) checkWin();
+        }
+
+        function undo() {
+            if (State.history.length === 0 || State.isWon || State.isPaused) return;
+            unlockNumber();
+            State.grid = State.history.pop();
+            renderBoard();
+            saveGameState();
+        }
+
+        function checkWin() {
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (State.grid[r][c].val !== State.solution[r][c]) return false;
+                }
+            }
+            handleWin();
+            return true;
+        }
+
+        async function playWinTune() {
+            try {
+                await window.Tone.start();
+                const synth = new window.Tone.Synth({
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.05, decay: 0.2, sustain: 0.2, release: 1 }
+                }).toDestination();
+                const now = window.Tone.now();
+                
+                // Quick, joyful celebration arpeggio
+                synth.triggerAttackRelease("C5", "16n", now);
+                synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                synth.triggerAttackRelease("C6", "4n", now + 0.3);
+            } catch (e) {
+                console.log('Audio disabled or failed to load:', e);
+            }
+        }
+
+        function handleWin() {
+            State.isWon = true;
+            clearInterval(State.timerInterval);
+            const ms = State.accumulatedTime + (Date.now() - State.lastStartTime);
+            
+            const diffTimes = State.topTimes[State.diff];
+            diffTimes.push(ms);
+            diffTimes.sort((a, b) => a - b);
+            if (diffTimes.length > 3) diffTimes.pop();
+            
+            saveTopTimes();
+            saveGameState();
+            updateHeaderUI();
+
+            UI.winDiff.textContent = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            UI.winTime.textContent = formatTime(ms);
+            UI.winModal.classList.add('modal-enter-active');
+            
+            playWinTune();
+        }
+
+        function setupEventListeners() {
+            let confirmAction = 'reset';
+            
+            UI.btnSettings.addEventListener('click', () => {
+                UI.settingsModal.classList.add('modal-enter-active');
+            });
+            UI.btnPauseH1.addEventListener('click', togglePause);
+            UI.btnResumeOverlay.addEventListener('click', togglePause);
+            
+            UI.btnResetOverlay.addEventListener('click', () => {
+                confirmAction = 'reset';
+                document.querySelector('#confirm-modal h3').textContent = 'Reset Puzzle?';
+                document.querySelector('#confirm-modal p').textContent = 'This will clear all your answers and notes, and reset the timer back to zero.';
+                document.getElementById('btn-confirm-yes').textContent = 'Reset';
+                UI.confirmModal.classList.add('fade-enter-active');
+            });
+            
+            UI.btnConfirmCancel.addEventListener('click', () => UI.confirmModal.classList.remove('fade-enter-active'));
+            UI.btnConfirmYes.addEventListener('click', () => {
+                if (confirmAction === 'reset') {
+                    executeReset();
+                } else {
+                    startNewGame();
+                    UI.confirmModal.classList.remove('fade-enter-active');
+                }
+            });
+
+            UI.btnCloseSettings.addEventListener('click', () => {
+                UI.settingsModal.classList.remove('modal-enter-active');
+                renderBoard();
+            });
+            
+            UI.diffBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    UI.diffBtns.forEach(b => { b.classList.remove('bg-red-700', 'text-white', 'shadow-sm'); b.classList.add('bg-slate-100', 'text-slate-600'); });
+                    e.target.classList.remove('bg-slate-100', 'text-slate-600');
+                    e.target.classList.add('bg-red-700', 'text-white', 'shadow-sm');
+                    State.diff = e.target.dataset.diff;
+                });
+            });
+
+            Object.values(UI.toggles).forEach(toggle => {
+                toggle.addEventListener('change', renderBoard);
+            });
+
+            UI.btnNewGame.addEventListener('click', () => {
+                confirmAction = 'new';
+                document.querySelector('#confirm-modal h3').textContent = 'Start New Game?';
+                document.querySelector('#confirm-modal p').textContent = 'Your current progress will be lost.';
+                document.getElementById('btn-confirm-yes').textContent = 'Start';
+                UI.settingsModal.classList.remove('modal-enter-active');
+                UI.confirmModal.classList.add('fade-enter-active');
+            });
+            
+            UI.btnWinNew.addEventListener('click', startNewGame);
+            UI.btnWinClose.addEventListener('click', () => {
+                UI.winModal.classList.remove('modal-enter-active');
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (!State.isPaused && !State.isWon) {
+                        togglePause();
+                    }
+                    saveGameState();
+                }
+            });
+
+            window.addEventListener('beforeunload', () => {
+                saveGameState();
+            });
+
+            UI.btnUndo.addEventListener('click', undo);
+            UI.btnErase.addEventListener('click', () => applyInput(0));
+            UI.btnNotes.addEventListener('click', () => {
+                State.notesMode = !State.notesMode;
+                UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
+                UI.btnNotes.classList.toggle('text-slate-500', !State.notesMode);
+            });
+
+            UI.board.addEventListener('pointerdown', (e) => {
+                const cell = e.target.closest('.sudoku-cell');
+                if (cell) {
+                    e.preventDefault(); 
+                    handleCellClick(parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+                }
+            });
+
+            const keys = UI.keypad.querySelectorAll('.numpad-btn');
+            keys.forEach(btn => {
+                let holdTimeout;
+                let isHold = false;
+                const val = parseInt(btn.dataset.val);
+
+                const startHold = (e) => {
+                    e.preventDefault(); 
+                    isHold = false;
+                    btn.style.transform = 'scale(0.85)';
+                    
+                    holdTimeout = setTimeout(() => {
+                        isHold = true;
+                        if (State.lockedNumber === val) {
+                            unlockNumber();
+                        } else {
+                            lockNumber(val);
+                            if(navigator.vibrate) navigator.vibrate(50);
+                        }
+                    }, 400); 
+                };
+
+                const endHold = (e) => {
+                    e.preventDefault();
+                    clearTimeout(holdTimeout);
+                    btn.style.transform = '';
+                    
+                    if (!isHold) {
+                        if (State.lockedNumber === val) {
+                            unlockNumber();
+                            renderBoard();
+                        } else if (State.lockedNumber !== null && State.lockedNumber !== val) {
+                            lockNumber(val);
+                        } else {
+                            applyInput(val);
+                        }
+                    }
+                };
+
+                btn.addEventListener('pointerdown', startHold);
+                btn.addEventListener('pointerup', endHold);
+                btn.addEventListener('pointerleave', () => {
+                    clearTimeout(holdTimeout);
+                    btn.style.transform = '';
+                });
+                btn.addEventListener('pointercancel', () => {
+                    clearTimeout(holdTimeout);
+                    btn.style.transform = '';
+                });
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (State.isWon || State.isPaused) return;
+                if (e.key >= '1' && e.key <= '9') applyInput(parseInt(e.key));
+                else if (e.key === 'Backspace' || e.key === 'Delete') applyInput(0);
+                else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) undo();
+                else if (e.key === 'n') UI.btnNotes.click();
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
