@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Force white theme regardless of user's Dark Mode preference -->
     <meta name="theme-color" content="#ffffff">
-    <title>My Sudoku</title>
+    
+    <!-- Inline Manifest to lock iOS PWA scope and prevent the Out-Of-Scope Nav Bar shadow -->
+    <link rel="manifest" href='data:application/manifest+json;utf8,{"name":"Pro Sudoku","short_name":"Sudoku","display":"standalone","start_url":".","scope":".","background_color":"#ffffff","theme_color":"#ffffff"}'>
     <link rel="icon" type="favicon/png" href="favicon.png">
-	<link rel="apple-touch-icon" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <title>My Sudoku</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -18,13 +24,17 @@
     <script src="sudoku_bank.js"></script>
     
     <style>
+        :root {
+            --app-height: 100dvh;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior: none; /* Prevents pull-to-refresh */
         }
 
-        /* Modal Transitions with visibility fixes for iOS compositing bugs */
+        /* Modal Transitions */
         .modal-enter {
             opacity: 0;
             transform: scale(0.95);
@@ -54,7 +64,8 @@
         /* Board Sizing: Ensures perfect square bounded by viewport height */
         .board-container {
             width: 100%;
-            max-width: min(100%, calc(100dvh - 230px)); /* Strictly leaves room for header and footer */
+            /* Heavily subtracts to allow the large top padding above H1 to exist without squishing the board */
+            max-width: min(100%, calc(var(--app-height) - 320px)); 
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             position: relative;
@@ -65,9 +76,9 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 3px; /* Thick inner borders */
-            background-color: #171717; /* Border color */
-            padding: 3px; /* Internalizing border to prevent cutoff */
+            gap: 3px; 
+            background-color: #171717; 
+            padding: 3px; 
             width: 100%;
             height: 100%;
             box-sizing: border-box;
@@ -77,13 +88,13 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 1px; /* Thin borders */
+            gap: 1px; 
             background-color: #171717;
             min-width: 0;
             min-height: 0;
         }
 
-        /* Cell Styling & Washed Red Tones */
+        /* Cell Styling */
         .sudoku-cell {
             background-color: #ffffff;
             position: relative;
@@ -101,7 +112,6 @@
             background-color: #f1f5f9;
         }
 
-        /* Highlight overlays for blending */
         .sudoku-cell::before {
             content: '';
             position: absolute;
@@ -112,42 +122,24 @@
             transition: background-color 0.1s;
         }
 
-        .sudoku-cell.highlight-area::before {
-            background-color: rgba(254, 226, 226, 0.8); /* Richer 50% contrast red tone, translucent */
-        }
+        .sudoku-cell.highlight-area::before { background-color: rgba(254, 226, 226, 0.8); }
+        .sudoku-cell.selected::before { background-color: rgba(252, 165, 165, 0.95) !important; }
+        .sudoku-cell.highlight-identical::before { background-color: rgba(248, 113, 113, 1) !important; }
+        .sudoku-cell.conflict::before { background-color: rgba(229, 115, 115, 1) !important; }
 
-        .sudoku-cell.selected::before {
-            background-color: rgba(252, 165, 165, 0.95) !important; /* Highly visible selected cell */
-        }
-        
-        .sudoku-cell.highlight-identical::before {
-            background-color: rgba(248, 113, 113, 1) !important; /* Vibrant red for identicals */
-        }
-        
-        .sudoku-cell.conflict::before {
-            background-color: rgba(229, 115, 115, 1) !important; /* Distinct error red */
-        }
-
-        /* Number Colors */
         .sudoku-cell.highlight-identical .cell-value,
         .sudoku-cell.highlight-identical .note-num,
-        .sudoku-cell.conflict .cell-value {
-            color: #ffffff !important; 
-        }
+        .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
 
         .cell-value {
             font-size: clamp(16px, 6cqi, 30px);
             font-weight: 700;
             z-index: 2;
+            transition: color 0.1s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .cell-value.prefilled {
-            color: #000000;
-        }
-
-        .cell-value.user-input {
-            color: #334155;
-        }
+        .cell-value.prefilled { color: #000000; }
+        .cell-value.user-input { color: #334155; }
 
         .notes-grid {
             position: absolute;
@@ -156,7 +148,7 @@
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
             pointer-events: none;
-            z-index: 2; /* Above the ::before highlight */
+            z-index: 2; 
         }
 
         .note-num {
@@ -167,6 +159,7 @@
             color: #64748b; 
             font-weight: 500;
             line-height: 1;
+            transition: color 0.1s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .note-num.highlight-identical {
@@ -200,7 +193,11 @@
             opacity: 0.7;
         }
 
-        /* Interactive buttons scaling */
+        .numpad-val {
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         .ctrl-btn:active {
             transform: scale(0.9);
         }
@@ -208,208 +205,240 @@
         ::-webkit-scrollbar {
             display: none;
         }
+
+        /* 
+         * LANDSCAPE PORTRAIT-LOCK TRICK 
+         * Counter-rotates the entire application to lock the structure to portrait, 
+         * then applies a 90-degree forward rotation selectively to the numbers.
+         */
+        @media screen and (orientation: landscape) {
+            :root {
+                /* Swap the primary dimension basis in landscape */
+                --app-height: 100dvw;
+            }
+            #app-wrapper {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100dvh;
+                height: 100dvw;
+                transform-origin: top left;
+                transform: translateY(100dvh) rotate(-90deg);
+                overflow: hidden;
+            }
+            /* Only flip the numbers so they are readable sideways */
+            .cell-value, .note-num, .numpad-val {
+                transform: rotate(90deg);
+            }
+        }
     </style>
 </head>
 <body class="bg-white text-slate-800 h-[100dvh] w-screen overflow-hidden flex flex-col select-none touch-none">
 
-    <!-- Safe area padding for iOS home screen apps -->
-    <div class="w-full max-w-lg mx-auto flex flex-col h-full pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] relative">
+    <!-- The root wrapper that is rotated dynamically in landscape mode -->
+    <div id="app-wrapper" class="w-full h-full relative overflow-hidden bg-white">
         
-        <!-- Header (H1) -->
-        <header class="flex justify-between items-center mb-5 shrink-0 px-4">
-            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 flex items-center gap-2">
-                My Sudoku <i class="fa-brands fa-canadian-maple-leaf text-red-600"></i>
-            </h1>
-            <div class="flex gap-2 items-center relative">
-                <button id="btn-stats-modal" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
-                    <i class="fas fa-trophy text-xl"></i>
-                </button>
-                <button id="btn-settings" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
-                    <i class="fas fa-cog text-xl"></i>
-                </button>
-                <button id="btn-pause-h1" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
-                    <i class="fas fa-pause text-xl"></i>
-                </button>
-            </div>
-        </header>
+        <!-- Safe area padding + Generous 4rem top gap to clear Safari blur strip -->
+        <div class="w-full max-w-lg mx-auto flex flex-col h-full pt-[max(4rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] relative">
+            
+            <!-- Header (H1) -->
+            <header class="flex justify-between items-center mb-5 shrink-0 px-4">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 flex items-center gap-2">
+                    My Sudoku <i class="fa-brands fa-canadian-maple-leaf text-red-600"></i>
+                </h1>
+                <div class="flex gap-2 items-center relative">
+                    <button id="btn-stats-modal" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
+                        <i class="fas fa-trophy text-xl"></i>
+                    </button>
+                    <button id="btn-settings" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <button id="btn-pause-h1" class="text-slate-600 active:text-slate-900 p-2 transition-colors">
+                        <i class="fas fa-pause text-xl"></i>
+                    </button>
+                </div>
+            </header>
 
-        <!-- Stats Bar (H2) -->
-        <div class="flex justify-between items-center mb-1 shrink-0 px-6 w-full text-slate-600">
-            <div class="flex items-center justify-center gap-2 w-1/3">
-                <i class="fas fa-trophy text-slate-400"></i>
-                <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
+            <!-- Stats Bar (H2) -->
+            <div class="flex justify-between items-center mb-1 shrink-0 px-6 w-full text-slate-600">
+                <div class="flex items-center justify-center gap-2 w-1/3">
+                    <i class="fas fa-trophy text-slate-400"></i>
+                    <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
+                </div>
+                <div class="flex flex-col items-center w-1/3">
+                    <span id="stat-diff" class="text-base sm:text-lg font-bold tracking-widest text-red-700">Easy</span>
+                </div>
+                <div class="flex items-center justify-center gap-2 w-1/3">
+                    <i class="fas fa-clock text-slate-400"></i>
+                    <span id="stat-time" class="font-mono text-sm sm:text-base font-medium text-slate-800">00:00</span>
+                </div>
             </div>
-            <div class="flex flex-col items-center w-1/3">
-                <span id="stat-diff" class="text-base sm:text-lg font-bold tracking-widest text-red-700">Easy</span>
+
+            <!-- Board Wrapper -->
+            <div class="flex-grow flex items-center justify-center min-h-0 mb-2 w-full px-2" style="container-type: inline-size;">
+                <div class="board-container">
+                    <div id="sudoku-board" class="board-outer">
+                        <!-- 9 Blocks generated by JS -->
+                    </div>
+                    
+                    <!-- Pause Overlay -->
+                    <div id="pause-overlay" class="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center hidden">
+                        <span class="text-3xl font-bold tracking-widest text-slate-800 mb-8">PAUSED</span>
+                        <button id="btn-resume-overlay" class="bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
+                            <i class="fas fa-play mr-2"></i> Resume
+                        </button>
+                        <button id="btn-reset-overlay" class="text-slate-500 font-medium p-3 active:text-slate-800 transition-colors flex items-center gap-2">
+                            <i class="fas fa-rotate-left"></i> Reset Puzzle
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="flex items-center justify-center gap-2 w-1/3">
-                <i class="fas fa-clock text-slate-400"></i>
-                <span id="stat-time" class="font-mono text-sm sm:text-base font-medium text-slate-800">00:00</span>
+
+            <!-- Controls -->
+            <div class="shrink-0 flex flex-col gap-4 sm:gap-6 w-full">
+                <!-- Upper Control Line: Undo, Erase, Notes -->
+                <div class="flex justify-around items-center px-6">
+                    <button id="btn-undo" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
+                        <i class="fas fa-undo text-xl sm:text-2xl"></i>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider">Undo</span>
+                    </button>
+                    <button id="btn-erase" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
+                        <i class="fas fa-eraser text-xl sm:text-2xl"></i>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider">Erase</span>
+                    </button>
+                    <button id="btn-notes" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all" style="touch-action: none;">
+                        <i class="fas fa-pen text-xl sm:text-2xl"></i>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider">Notes</span>
+                    </button>
+                </div>
+
+                <!-- Lower Control Line: Keypad -->
+                <div class="flex justify-between items-center px-3" id="keypad">
+                    <!-- Keys 1-9 generated by JS -->
+                </div>
             </div>
         </div>
 
-        <!-- Board Wrapper -->
-        <div class="flex-grow flex items-center justify-center min-h-0 mb-2 w-full px-2" style="container-type: inline-size;">
-            <div class="board-container">
-                <div id="sudoku-board" class="board-outer">
-                    <!-- 9 Blocks generated by JS -->
+        
+        <!-- Reset/Clear Confirmation Modal -->
+        <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
+            <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                </div>
+                <h3 id="confirm-title" class="text-xl font-bold text-slate-800 mb-2">Reset Puzzle?</h3>
+                <p id="confirm-desc" class="text-sm text-slate-500 mb-6">This will clear all your answers and notes, and reset the timer back to zero.</p>
+                <div class="flex gap-3">
+                    <button id="btn-confirm-cancel" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Cancel</button>
+                    <button id="btn-confirm-yes" class="flex-1 bg-red-600 text-white font-bold py-3.5 rounded-xl active:bg-red-700 transition-colors">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Modal -->
+        <div id="stats-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center modal-enter">
+            <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 shadow-xl mx-4 transform transition-transform">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-trophy text-red-600"></i> Best Times</h2>
+                    <button id="close-stats" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="flex flex-col gap-4" id="stats-list-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Difficulty Selection Modal (Post-Win) -->
+        <div id="diff-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
+            <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">Select Difficulty</h3>
+                <div class="flex flex-col gap-3">
+                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="easy">Easy</button>
+                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="medium">Medium</button>
+                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="hard">Hard</button>
+                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="extreme">Extreme</button>
+                </div>
+                <button id="btn-diff-cancel" class="mt-4 text-slate-500 font-medium p-2 active:text-slate-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-end sm:items-center justify-center modal-enter">
+            <!-- Uses calc based on portrait/landscape variable for accurate max-heights -->
+            <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[calc(var(--app-height)*0.9)] overflow-y-auto flex flex-col shadow-2xl">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
+                    <h2 class="text-xl font-bold text-slate-800">Settings</h2>
+                    <button id="close-settings" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 
-                <!-- Pause Overlay -->
-                <div id="pause-overlay" class="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center hidden">
-                    <span class="text-3xl font-bold tracking-widest text-slate-800 mb-8">PAUSED</span>
-                    <button id="btn-resume-overlay" class="bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
-                        <i class="fas fa-play mr-2"></i> Resume
-                    </button>
-                    <button id="btn-reset-overlay" class="text-slate-500 font-medium p-3 active:text-slate-800 transition-colors flex items-center gap-2">
-                        <i class="fas fa-rotate-left"></i> Reset Puzzle
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls -->
-        <div class="shrink-0 flex flex-col gap-4 sm:gap-6 w-full">
-            <!-- Upper Control Line: Undo, Erase, Notes -->
-            <div class="flex justify-around items-center px-6">
-                <button id="btn-undo" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
-                    <i class="fas fa-undo text-xl sm:text-2xl"></i>
-                    <span class="text-[10px] font-semibold uppercase tracking-wider">Undo</span>
-                </button>
-                <button id="btn-erase" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
-                    <i class="fas fa-eraser text-xl sm:text-2xl"></i>
-                    <span class="text-[10px] font-semibold uppercase tracking-wider">Erase</span>
-                </button>
-                <button id="btn-notes" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all" style="touch-action: none;">
-                    <i class="fas fa-pen text-xl sm:text-2xl"></i>
-                    <span class="text-[10px] font-semibold uppercase tracking-wider">Notes</span>
-                </button>
-            </div>
-
-            <!-- Lower Control Line: Keypad -->
-            <div class="flex justify-between items-center px-3" id="keypad">
-                <!-- Keys 1-9 generated by JS -->
-            </div>
-        </div>
-    </div>
-
-    
-    <!-- Reset/Clear Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
-        <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
-            </div>
-            <h3 id="confirm-title" class="text-xl font-bold text-slate-800 mb-2">Reset Puzzle?</h3>
-            <p id="confirm-desc" class="text-sm text-slate-500 mb-6">This will clear all your answers and notes, and reset the timer back to zero.</p>
-            <div class="flex gap-3">
-                <button id="btn-confirm-cancel" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Cancel</button>
-                <button id="btn-confirm-yes" class="flex-1 bg-red-600 text-white font-bold py-3.5 rounded-xl active:bg-red-700 transition-colors">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Stats Modal -->
-    <div id="stats-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center modal-enter">
-        <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 shadow-xl mx-4 transform transition-transform">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-trophy text-red-600"></i> Best Times</h2>
-                <button id="close-stats" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="flex flex-col gap-4" id="stats-list-container">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Difficulty Selection Modal (Post-Win) -->
-    <div id="diff-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
-        <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
-            <h3 class="text-xl font-bold text-slate-800 mb-4">Select Difficulty</h3>
-            <div class="flex flex-col gap-3">
-                <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="easy">Easy</button>
-                <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="medium">Medium</button>
-                <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="hard">Hard</button>
-                <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="extreme">Extreme</button>
-            </div>
-            <button id="btn-diff-cancel" class="mt-4 text-slate-500 font-medium p-2 active:text-slate-800">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-end sm:items-center justify-center modal-enter">
-        <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto flex flex-col shadow-2xl">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
-                <h2 class="text-xl font-bold text-slate-800">Settings</h2>
-                <button id="close-settings" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            
-            <div class="p-6 flex flex-col gap-8">
-                <!-- Difficulty -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Difficulty</h3>
-                    <div class="grid grid-cols-4 gap-2">
-                        <!-- Strict Class management by JS to prevent sticky hover states -->
-                        <button class="diff-btn" data-diff="easy">Easy</button>
-                        <button class="diff-btn" data-diff="medium">Medium</button>
-                        <button class="diff-btn" data-diff="hard">Hard</button>
-                        <button class="diff-btn" data-diff="extreme">Extreme</button>
+                <div class="p-6 flex flex-col gap-8">
+                    <!-- Difficulty -->
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Difficulty</h3>
+                        <div class="grid grid-cols-4 gap-2">
+                            <!-- Strict Class management by JS to prevent sticky hover states -->
+                            <button class="diff-btn" data-diff="easy">Easy</button>
+                            <button class="diff-btn" data-diff="medium">Medium</button>
+                            <button class="diff-btn" data-diff="hard">Hard</button>
+                            <button class="diff-btn" data-diff="extreme">Extreme</button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Toggles -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Highlighting Options</h3>
-                    <div class="flex flex-col gap-4">
-                        <label class="flex justify-between items-center cursor-pointer">
-                            <span class="font-medium text-slate-700">Highlight Rows</span>
-                            <input type="checkbox" id="toggle-row" class="w-5 h-5 accent-red-600" checked>
-                        </label>
-                        <label class="flex justify-between items-center cursor-pointer">
-                            <span class="font-medium text-slate-700">Highlight Columns</span>
-                            <input type="checkbox" id="toggle-col" class="w-5 h-5 accent-red-600" checked>
-                        </label>
-                        <label class="flex justify-between items-center cursor-pointer">
-                            <span class="font-medium text-slate-700">Highlight Boxes</span>
-                            <input type="checkbox" id="toggle-box" class="w-5 h-5 accent-red-600" checked>
-                        </label>
-                        <label class="flex justify-between items-center cursor-pointer">
-                            <span class="font-medium text-slate-700">Highlight Identical Numbers</span>
-                            <input type="checkbox" id="toggle-ident" class="w-5 h-5 accent-red-600" checked>
-                        </label>
-                        <label class="flex justify-between items-center cursor-pointer">
-                            <span class="font-medium text-slate-700">Highlight Conflicts</span>
-                            <input type="checkbox" id="toggle-conflict" class="w-5 h-5 accent-red-600" checked>
-                        </label>
+                    <!-- Toggles -->
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Highlighting Options</h3>
+                        <div class="flex flex-col gap-4">
+                            <label class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-slate-700">Highlight Rows</span>
+                                <input type="checkbox" id="toggle-row" class="w-5 h-5 accent-red-600" checked>
+                            </label>
+                            <label class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-slate-700">Highlight Columns</span>
+                                <input type="checkbox" id="toggle-col" class="w-5 h-5 accent-red-600" checked>
+                            </label>
+                            <label class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-slate-700">Highlight Boxes</span>
+                                <input type="checkbox" id="toggle-box" class="w-5 h-5 accent-red-600" checked>
+                            </label>
+                            <label class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-slate-700">Highlight Identical Numbers</span>
+                                <input type="checkbox" id="toggle-ident" class="w-5 h-5 accent-red-600" checked>
+                            </label>
+                            <label class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-slate-700">Highlight Conflicts</span>
+                                <input type="checkbox" id="toggle-conflict" class="w-5 h-5 accent-red-600" checked>
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <button id="btn-new-game" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl text-lg shadow-md active:bg-red-700 transition-colors">
-                    Start New Game
+                    <button id="btn-new-game" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl text-lg shadow-md active:bg-red-700 transition-colors">
+                        Start New Game
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Win Modal -->
+        <div id="win-modal" class="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center modal-enter">
+            <div class="text-center px-6 max-w-sm w-full">
+                <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="fas fa-trophy text-5xl text-red-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Puzzle Solved!</h2>
+                <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8">
+                    <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold text-red-600"></span></p>
+                    <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Time: <span id="win-time" class="font-mono font-bold text-slate-800 text-lg"></span></p>
+                </div>
+                
+                <button id="btn-win-new" class="w-full bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
+                    Play Another
+                </button>
+                <button id="btn-win-close" class="text-slate-500 font-medium p-3 active:text-slate-800 transition-colors">
+                    View Completed Board
                 </button>
             </div>
         </div>
-    </div>
 
-    <!-- Win Modal -->
-    <div id="win-modal" class="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center modal-enter">
-        <div class="text-center px-6 max-w-sm w-full">
-            <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                <i class="fas fa-trophy text-5xl text-red-600"></i>
-            </div>
-            <h2 class="text-3xl font-bold text-slate-800 mb-2">Puzzle Solved!</h2>
-            <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8">
-                <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold text-red-600"></span></p>
-                <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Time: <span id="win-time" class="font-mono font-bold text-slate-800 text-lg"></span></p>
-            </div>
-            
-            <button id="btn-win-new" class="w-full bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
-                Play Another
-            </button>
-            <button id="btn-win-close" class="text-slate-500 font-medium p-3 active:text-slate-800 transition-colors">
-                View Completed Board
-            </button>
-        </div>
     </div>
 
     <script>
@@ -806,8 +835,13 @@
             for (let i = 1; i <= 9; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'numpad-btn text-3xl sm:text-[40px] text-slate-700 font-medium w-10 sm:w-12 h-14 flex items-center justify-center';
-                btn.textContent = i;
                 btn.dataset.val = i;
+                
+                const span = document.createElement('span');
+                span.className = 'numpad-val pointer-events-none'; // Ensures click passes through to button
+                span.textContent = i;
+                
+                btn.appendChild(span);
                 UI.keypad.appendChild(btn);
             }
         }
@@ -1338,8 +1372,6 @@
                 document.getElementById('confirm-title').textContent = 'Start New Game?';
                 document.getElementById('confirm-desc').textContent = 'Your current progress will be lost.';
                 document.getElementById('btn-confirm-yes').textContent = 'Start';
-                // Remove settings modal hide here so they can see the settings state, or hide it.
-                // Keeping it hidden is cleaner if we pop a new modal.
                 UI.settingsModal.classList.remove('modal-enter-active');
                 UI.confirmModal.classList.add('fade-enter-active');
             });
