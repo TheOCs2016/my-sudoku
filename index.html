@@ -65,7 +65,7 @@
         .board-container {
             width: 100%;
             /* Heavily subtracts to allow the large top padding above H1 to exist without squishing the board */
-            max-width: min(100%, calc(var(--app-height) - 320px)); 
+            max-width: min(100%, calc(var(--app-height) - 340px)); 
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             position: relative;
@@ -109,9 +109,15 @@
         }
 
         .sudoku-cell.prefilled-bg {
-            background-color: #f1f5f9;
+            background-color: #e6e6e6;
         }
 
+        /* Custom Cell Colors */
+        .cell-color-purple { background-color: #d8b4fe !important; }
+        .cell-color-green { background-color: #86efac !important; }
+        .cell-color-yellow { background-color: #fde047 !important; }
+
+        /* Highlight Overlays - Soft Translucency */
         .sudoku-cell::before {
             content: '';
             position: absolute;
@@ -122,13 +128,13 @@
             transition: background-color 0.1s;
         }
 
-        .sudoku-cell.highlight-area::before { background-color: rgba(254, 226, 226, 0.8); }
-        .sudoku-cell.selected::before { background-color: rgba(252, 165, 165, 0.95) !important; }
-        .sudoku-cell.highlight-identical::before { background-color: rgba(248, 113, 113, 1) !important; }
-        .sudoku-cell.conflict::before { background-color: rgba(229, 115, 115, 1) !important; }
+        .sudoku-cell.highlight-area::before { background-color: rgba(239, 68, 68, 0.2); }
+        .sudoku-cell.selected::before { background-color: rgba(220, 38, 38, 0.3) !important; }
+		 .sudoku-cell.highlight-identical::before { background-color: rgba(248, 113, 113, 1) !important; }
+		 .sudoku-cell.highlight-identical .cell-value { color: #ffffff !important; }
 
-        .sudoku-cell.highlight-identical .cell-value,
-        .sudoku-cell.highlight-identical .note-num,
+        /* Conflict Orange */
+        .sudoku-cell.conflict::before { background-color: rgba(234, 88, 12, 0.5) !important; }
         .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
 
         .cell-value {
@@ -138,8 +144,9 @@
             transition: color 0.1s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .cell-value.prefilled { color: #000000; }
-        .cell-value.user-input { color: #334155; }
+        /* Distinguish inputs and presets */
+        .cell-value.prefilled { color: #0f172a; } /* Slate 900 */
+        .cell-value.user-input { color: #0f172a; } /* Slate 900 */
 
         .notes-grid {
             position: absolute;
@@ -163,7 +170,12 @@
         }
 
         .note-num.highlight-identical {
-            color: #b91c1c;
+            color: #ffffff;
+            background-color: #ef4444;
+            border-radius: 50%;
+            width: 85%;
+            aspect-ratio: 1 / 1;
+            margin: auto;
             font-weight: 800;
         }
 
@@ -198,7 +210,7 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .ctrl-btn:active {
+        .ctrl-btn:active, .btn-color:active {
             transform: scale(0.9);
         }
 
@@ -208,8 +220,6 @@
 
         /* 
          * LANDSCAPE PORTRAIT-LOCK TRICK 
-         * Counter-rotates the entire application to lock the structure to portrait, 
-         * then applies a 90-degree forward rotation selectively to the numbers.
          */
         @media screen and (orientation: landscape) {
             :root {
@@ -235,13 +245,10 @@
 </head>
 <body class="bg-white text-slate-800 h-[100dvh] w-screen overflow-hidden flex flex-col select-none touch-none">
 
-    <!-- The root wrapper that is rotated dynamically in landscape mode -->
     <div id="app-wrapper" class="w-full h-full relative overflow-hidden bg-white">
         
-        <!-- Safe area padding + Generous 2rem top gap to clear Safari blur strip -->
         <div class="w-full max-w-lg mx-auto flex flex-col h-full pt-[max(2rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] relative">
             
-            <!-- Header (H1) -->
             <header class="flex justify-between items-center mb-5 shrink-0 px-4">
                 <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 flex items-center gap-2">
                     My Sudoku <i class="fa-brands fa-canadian-maple-leaf text-red-600"></i>
@@ -259,7 +266,6 @@
                 </div>
             </header>
 
-            <!-- Stats Bar (H2) -->
             <div class="flex justify-between items-center mb-1 shrink-0 px-6 w-full text-slate-600">
                 <div class="flex items-center justify-center gap-2 w-1/3">
                     <i class="fas fa-trophy text-slate-400"></i>
@@ -295,26 +301,44 @@
             </div>
 
             <!-- Controls -->
-            <div class="shrink-0 flex flex-col gap-4 sm:gap-6 w-full">
-                <!-- Upper Control Line: Undo, Erase, Notes -->
-                <div class="flex justify-around items-center px-6">
+            <div class="shrink-0 flex flex-col gap-4 sm:gap-5 w-full">
+                <!-- Upper Control Line -->
+                <div class="flex justify-around items-center px-4">
                     <button id="btn-undo" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
                         <i class="fas fa-undo text-xl sm:text-2xl"></i>
                         <span class="text-[10px] font-semibold uppercase tracking-wider">Undo</span>
                     </button>
-                    <button id="btn-erase" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
-                        <i class="fas fa-eraser text-xl sm:text-2xl"></i>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider">Erase</span>
+                    <button id="btn-redo" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
+                        <i class="fas fa-redo text-xl sm:text-2xl"></i>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider">Redo</span>
                     </button>
                     <button id="btn-notes" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all" style="touch-action: none;">
                         <i class="fas fa-pen text-xl sm:text-2xl"></i>
                         <span class="text-[10px] font-semibold uppercase tracking-wider">Notes</span>
+                    </button>
+                    <button id="btn-erase" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
+                        <i class="fas fa-eraser text-xl sm:text-2xl"></i>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider">Erase</span>
                     </button>
                 </div>
 
                 <!-- Lower Control Line: Keypad -->
                 <div class="flex justify-between items-center px-3" id="keypad">
                     <!-- Keys 1-9 generated by JS -->
+                </div>
+
+                <!-- Tools & Modifiers -->
+                <div class="flex justify-between items-center px-4 w-full max-w-sm mx-auto">
+                    <label class="flex items-center gap-2 cursor-pointer text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider select-none transition-colors hover:text-slate-700">
+                        <input type="checkbox" id="toggle-candidates" class="w-4 h-4 accent-red-600 rounded cursor-pointer">
+                        Show Candidates
+                    </label>
+                    <div class="flex gap-2.5" id="color-palette">
+                        <button class="btn-color w-6 h-6 rounded-full border-2 border-slate-200 bg-white shadow-sm transition-transform" data-color="none"></button>
+                        <button class="btn-color w-6 h-6 rounded-full border-2 border-purple-400 bg-purple-300 shadow-sm transition-transform" data-color="purple"></button>
+                        <button class="btn-color w-6 h-6 rounded-full border-2 border-green-400 bg-green-300 shadow-sm transition-transform" data-color="green"></button>
+                        <button class="btn-color w-6 h-6 rounded-full border-2 border-yellow-400 bg-yellow-300 shadow-sm transition-transform" data-color="yellow"></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -364,7 +388,6 @@
 
         <!-- Settings Modal -->
         <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-end sm:items-center justify-center modal-enter">
-            <!-- Uses calc based on portrait/landscape variable for accurate max-heights -->
             <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[calc(var(--app-height)*0.9)] overflow-y-auto flex flex-col shadow-2xl">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
                     <h2 class="text-xl font-bold text-slate-800">Settings</h2>
@@ -376,7 +399,6 @@
                     <div>
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Difficulty</h3>
                         <div class="grid grid-cols-4 gap-2">
-                            <!-- Strict Class management by JS to prevent sticky hover states -->
                             <button class="diff-btn" data-diff="easy">Easy</button>
                             <button class="diff-btn" data-diff="medium">Medium</button>
                             <button class="diff-btn" data-diff="hard">Hard</button>
@@ -548,7 +570,7 @@
                         grid[row][col] = num;
                         count = this.countSolutions(grid, count);
                         grid[row][col] = 0;
-                        if(count > 1) return count; // Short-circuit to guarantee uniqueness efficiency
+                        if(count > 1) return count; 
                     }
                 }
                 return count;
@@ -622,9 +644,13 @@
             diffDisplay: document.getElementById('stat-diff'),
             
             btnUndo: document.getElementById('btn-undo'),
+            btnRedo: document.getElementById('btn-redo'),
             btnErase: document.getElementById('btn-erase'),
             btnNotes: document.getElementById('btn-notes'),
             
+            toggleCandidates: document.getElementById('toggle-candidates'),
+            colorBtns: document.querySelectorAll('.btn-color'),
+
             btnStatsModal: document.getElementById('btn-stats-modal'),
             statsModal: document.getElementById('stats-modal'),
             closeStats: document.getElementById('close-stats'),
@@ -674,8 +700,10 @@
             solution: [],
             selected: null, 
             lockedNumber: null,
+            showAreaHighlight: true, // Controls row/col/box rendering during locks
             notesMode: false,
             history: [],
+            future: [], // Added for Redo
             timerInterval: null,
             isWon: false,
             isPaused: false,
@@ -719,6 +747,7 @@
                 grid: State.grid,
                 solution: State.solution,
                 history: State.history,
+                future: State.future,
                 accumulatedTime: currentTime,
                 notesMode: State.notesMode
             };
@@ -748,6 +777,7 @@
             State.grid = data.grid;
             State.solution = data.solution;
             State.history = data.history || [];
+            State.future = data.future || [];
             State.accumulatedTime = data.accumulatedTime || 0;
             State.notesMode = data.notesMode || false;
             
@@ -755,6 +785,7 @@
             State.isWon = false;
             State.isPaused = true; 
             State.lockedNumber = null;
+            State.showAreaHighlight = true;
             
             UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
 
@@ -838,7 +869,7 @@
                 btn.dataset.val = i;
                 
                 const span = document.createElement('span');
-                span.className = 'numpad-val pointer-events-none'; // Ensures click passes through to button
+                span.className = 'numpad-val pointer-events-none';
                 span.textContent = i;
                 
                 btn.appendChild(span);
@@ -862,10 +893,9 @@
             let data = null;
             const gen = new SudokuGenerator();
 
-            // Intercept generation to pull from compiled library if available
             if (window.SUDOKU_MASTER_BANK) {
                 let tierKey = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
-                if (tierKey === 'Extreme') tierKey = 'Expert'; // Fallback mapping to Expert if compiled bank uses older UI naming
+                if (tierKey === 'Extreme') tierKey = 'Expert'; 
                 
                 let bankTier = window.SUDOKU_MASTER_BANK[tierKey] || window.SUDOKU_MASTER_BANK['Extreme'] || window.SUDOKU_MASTER_BANK['Expert'];
                 
@@ -881,7 +911,6 @@
                     if (solStr && solStr.length === 81) {
                         solutionGrid = stringToGrid(solStr);
                     } else {
-                        // Solve missing solution key dynamically
                         solutionGrid = stringToGrid(puzzleStr);
                         gen.solveGrid(solutionGrid);
                     }
@@ -889,7 +918,6 @@
                 }
             }
 
-            // Fallback to on-the-fly generator
             if (!data) {
                 const K = difficulties[State.diff];
                 data = gen.generate(K);
@@ -905,7 +933,8 @@
                     row.push({
                         val: val,
                         initial: val !== 0,
-                        notes: Array(10).fill(false)
+                        notes: Array(10).fill(false),
+                        color: null
                     });
                 }
                 State.grid.push(row);
@@ -913,6 +942,7 @@
 
             State.selected = null;
             State.history = [];
+            State.future = [];
             State.isWon = false;
             
             if (State.isPaused) togglePause(); 
@@ -975,9 +1005,11 @@
                         cell.val = 0;
                         cell.notes = Array(10).fill(false);
                     }
+                    cell.color = null;
                 }
             }
             State.history = [];
+            State.future = [];
             State.selected = null;
             
             if (State.isPaused) togglePause();
@@ -1007,6 +1039,28 @@
             return `${m}:${s}`;
         }
 
+        function getValidCandidates() {
+            let validCands = Array.from({length: 9}, () => Array(9).fill(511));
+            for(let r=0; r<9; r++) {
+                for(let c=0; c<9; c++) {
+                    let v = State.grid[r][c].val;
+                    if(v !== 0) {
+                        for(let i=0; i<9; i++) {
+                            validCands[r][i] &= ~(1<<(v-1));
+                            validCands[i][c] &= ~(1<<(v-1));
+                        }
+                        let br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+                        for(let i=0; i<3; i++) {
+                            for(let j=0; j<3; j++) {
+                                validCands[br+i][bc+j] &= ~(1<<(v-1));
+                            }
+                        }
+                    }
+                }
+            }
+            return validCands;
+        }
+
         function renderBoard() {
             const conflicts = getConflicts();
             
@@ -1019,16 +1073,24 @@
             }
 
             let counts = Array(10).fill(0);
+            let showCands = UI.toggleCandidates.checked;
+            let validCands = showCands ? getValidCandidates() : null;
 
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
                     const data = State.grid[r][c];
                     if (data.val !== 0) counts[data.val]++;
+                    
                     const uiCell = UI.cells[r][c];
                     const root = uiCell.root;
                     
                     root.className = 'sudoku-cell';
                     if (data.initial) root.classList.add('prefilled-bg');
+                    
+                    // Individual Cell Colors
+                    if (data.color === 'purple') root.classList.add('cell-color-purple');
+                    else if (data.color === 'green') root.classList.add('cell-color-green');
+                    else if (data.color === 'yellow') root.classList.add('cell-color-yellow');
                     
                     if (data.val !== 0) {
                         uiCell.valEl.textContent = data.val;
@@ -1041,9 +1103,17 @@
                         const noteSpans = uiCell.notesEl.children;
                         for (let i = 1; i <= 9; i++) {
                             const span = noteSpans[i-1];
-                            span.textContent = data.notes[i] ? i : '';
+                            let isNoteVisible = false;
                             
-                            if (data.notes[i] && highlightVal === i && UI.toggles.ident.checked) {
+                            if (showCands) {
+                                isNoteVisible = (validCands[r][c] & (1<<(i-1))) !== 0;
+                            } else {
+                                isNoteVisible = data.notes[i];
+                            }
+                            
+                            span.textContent = isNoteVisible ? i : '';
+                            
+                            if (isNoteVisible && highlightVal === i && UI.toggles.ident.checked) {
                                 span.classList.add('highlight-identical');
                             } else {
                                 span.classList.remove('highlight-identical');
@@ -1058,9 +1128,11 @@
                                           Math.floor(c/3) === Math.floor(State.selected.c/3);
                         
                         let areaHighlight = false;
-                        if (UI.toggles.row.checked && isSameRow) areaHighlight = true;
-                        if (UI.toggles.col.checked && isSameCol) areaHighlight = true;
-                        if (UI.toggles.box.checked && isSameBox) areaHighlight = true;
+                        if (State.showAreaHighlight) {
+                            if (UI.toggles.row.checked && isSameRow) areaHighlight = true;
+                            if (UI.toggles.col.checked && isSameCol) areaHighlight = true;
+                            if (UI.toggles.box.checked && isSameBox) areaHighlight = true;
+                        }
 
                         if (areaHighlight) root.classList.add('highlight-area');
                         if (isSameRow && isSameCol) {
@@ -1115,6 +1187,7 @@
 
         function saveHistory() {
             State.history.push(JSON.parse(JSON.stringify(State.grid)));
+            State.future = []; 
         }
 
         function getBoardCounts() {
@@ -1127,17 +1200,18 @@
             return counts;
         }
 
-        function unlockNumber() {
-            State.lockedNumber = null;
-            document.querySelectorAll('.numpad-btn').forEach(k => k.classList.remove('locked-mode'));
-        }
-
-        function lockNumber(val) {
+        function setLock(val, fromKeypad = false) {
             State.lockedNumber = val;
+            if (fromKeypad) {
+                State.selected = null; 
+                State.showAreaHighlight = false;
+            }
             const keys = document.querySelectorAll('.numpad-btn');
             keys.forEach(k => k.classList.remove('locked-mode'));
-            const btn = document.querySelector(`.numpad-btn[data-val="${val}"]`);
-            if(btn) btn.classList.add('locked-mode');
+            if (val !== null) {
+                const btn = document.querySelector(`.numpad-btn[data-val="${val}"]`);
+                if(btn) btn.classList.add('locked-mode');
+            }
             renderBoard();
         }
 
@@ -1146,20 +1220,24 @@
 
             const cell = State.grid[r][c];
 
-            // Always select cell upon tap (persists highlights)
+            // Tapping an unlocked, already-selected cell deselects it
+            if (State.lockedNumber === null && State.selected && State.selected.r === r && State.selected.c === c) {
+                State.selected = null;
+                renderBoard();
+                return;
+            }
+
             State.selected = {r, c};
+            State.showAreaHighlight = true; 
 
             if (State.lockedNumber !== null) {
                 if (cell.val !== 0) {
-                    // Tapping ANY filled cell swaps the lock to its number
                     if (cell.val !== State.lockedNumber) {
-                        lockNumber(cell.val);
+                        setLock(cell.val, false);
                     } else {
-                        // Tapping the exact same locked number does nothing except update selection
                         renderBoard();
                     }
                 } else {
-                    // Tapping an empty cell applies the locked number
                     applyInput(State.lockedNumber, r, c);
                 }
                 return;
@@ -1182,7 +1260,7 @@
             saveHistory();
 
             if (val === 0) {
-                unlockNumber();
+                setLock(null);
                 if (cell.val !== 0) cell.val = 0;
                 else cell.notes = Array(10).fill(false);
             } else {
@@ -1212,28 +1290,36 @@
                                     nextVal = testVal; break;
                                 }
                             }
-                            if (nextVal !== null) lockNumber(nextVal);
-                            else unlockNumber();
+                            if (nextVal !== null) setLock(nextVal, true);
+                            else setLock(null);
                         }
                     } else {
-                        unlockNumber();
+                        setLock(null);
                     }
                 }
             }
 
             renderBoard();
             saveGameState();
-            
-            // Re-verify board completion
             checkWin();
         }
 
         function undo() {
             if (State.history.length === 0 || State.isWon || State.isPaused) return;
+            State.future.push(JSON.parse(JSON.stringify(State.grid)));
             State.grid = State.history.pop();
             renderBoard();
             saveGameState();
             checkWin(); 
+        }
+
+        function redo() {
+            if (State.future.length === 0 || State.isWon || State.isPaused) return;
+            State.history.push(JSON.parse(JSON.stringify(State.grid)));
+            State.grid = State.future.pop();
+            renderBoard();
+            saveGameState();
+            checkWin();
         }
 
         function checkWin() {
@@ -1257,7 +1343,6 @@
                 await window.Tone.start();
                 const synth = new window.Tone.Synth().toDestination();
                 const now = window.Tone.now();
-                // Level Up Celebration Synth
                 const notes = ["C5", "E5", "G5", "C6"];
                 const durations = ["16n", "16n", "16n", "4n"];
                 let time = now;
@@ -1367,6 +1452,20 @@
                 toggle.addEventListener('change', renderBoard);
             });
 
+            UI.toggleCandidates.addEventListener('change', renderBoard);
+
+            UI.colorBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (State.selected && !State.isWon && !State.isPaused) {
+                        saveHistory();
+                        let color = e.currentTarget.dataset.color;
+                        State.grid[State.selected.r][State.selected.c].color = color === 'none' ? null : color;
+                        renderBoard();
+                        saveGameState();
+                    }
+                });
+            });
+
             UI.btnNewGame.addEventListener('click', () => {
                 confirmAction = 'new';
                 document.getElementById('confirm-title').textContent = 'Start New Game?';
@@ -1398,9 +1497,9 @@
             });
 
             UI.btnUndo.addEventListener('click', undo);
+            UI.btnRedo.addEventListener('click', redo);
             UI.btnErase.addEventListener('click', () => applyInput(0));
             
-            // Notes toggle (click) and clear all (hold)
             let notesHoldTimeout;
             let isNotesHold = false;
             
@@ -1457,9 +1556,9 @@
                     holdTimeout = setTimeout(() => {
                         isHold = true;
                         if (State.lockedNumber === val) {
-                            unlockNumber();
+                            setLock(null);
                         } else {
-                            lockNumber(val);
+                            setLock(val, true);
                             if(navigator.vibrate) navigator.vibrate(50);
                         }
                     }, 400); 
@@ -1472,10 +1571,9 @@
                     
                     if (!isHold) {
                         if (State.lockedNumber === val) {
-                            unlockNumber();
-                            renderBoard();
+                            setLock(null);
                         } else if (State.lockedNumber !== null && State.lockedNumber !== val) {
-                            lockNumber(val);
+                            setLock(val, true);
                         } else {
                             applyInput(val);
                         }
@@ -1496,9 +1594,12 @@
 
             document.addEventListener('keydown', (e) => {
                 if (State.isWon || State.isPaused) return;
-                if (e.key >= '1' && e.key <= '9') applyInput(parseInt(e.key));
+                
+                if (e.key === 'y' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
+                else if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); redo(); }
+                else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
+                else if (e.key >= '1' && e.key <= '9') applyInput(parseInt(e.key));
                 else if (e.key === 'Backspace' || e.key === 'Delete') applyInput(0);
-                else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) undo();
                 else if (e.key === 'n') {
                     State.notesMode = !State.notesMode;
                     UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
