@@ -72,24 +72,32 @@
         }
 
         /* Continuous Border Grid Setup */
-        .board-outer {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 3px; 
-            background-color: #171717; 
-            padding: 3px; 
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box;
-        }
+	.board-outer {
+	    display: grid;
+	    grid-template-columns: repeat(3, 1fr);
+	    grid-template-rows: repeat(3, 1fr);
+	    gap: 3.5px; 
+    
+	    /* 1. Change this to whatever color you want the box separators to be */
+	    background-color: #9c9c9c; /* Example: Red box separators */
+	    
+	    /* 2. Recreate the outer border using the original dark gray color */
+	    border: 3px solid #171717; 
+	    
+	    /* 3. Remove padding so the border takes over */
+	    padding: 0; 
+	    
+	    width: 100%;
+	    height: 100%;
+	    box-sizing: border-box;
+	}
 
         .board-inner {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 1px; 
-            background-color: #171717;
+            gap: 1.5px; 
+            background-color: #a89e9e;
             min-width: 0;
             min-height: 0;
         }
@@ -109,7 +117,7 @@
         }
 
         .sudoku-cell.prefilled-bg {
-            background-color: #e6e6e6;
+            background-color: #d4d2d2;
         }
 
         /* Custom Cell Colors */
@@ -128,14 +136,25 @@
             transition: background-color 0.1s;
         }
 
-        .sudoku-cell.highlight-area::before { background-color: rgba(239, 68, 68, 0.2); }
-        .sudoku-cell.selected::before { background-color: rgba(220, 38, 38, 0.3) !important; }
-		 .sudoku-cell.highlight-identical::before { background-color: rgba(248, 113, 113, 1) !important; }
-		 .sudoku-cell.highlight-identical .cell-value { color: #ffffff !important; }
-
-        /* Conflict Orange */
-        .sudoku-cell.conflict::before { background-color: rgba(234, 88, 12, 0.5) !important; }
-        .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
+	/* Highlight Overlays - Warm Amber/Sepia-Orange */
+     	    .sudoku-cell.highlight-area::before { background-color: rgba(245, 158, 11, 0.3); }
+	    .sudoku-cell.selected::before { background-color: rgba(245, 158, 11, 1.0) !important; }
+	    .sudoku-cell.highlight-identical::before { background-color: rgba(245, 158, 11, 1.0) !important; }
+	    .sudoku-cell.highlight-identical .cell-value { color: #0f172a !important; }
+	
+	.note-num.highlight-identical {
+	    color: #0f172a;
+	    background-color: #f59e0b;
+	    border-radius: 50%;
+	    width: 85%;
+	    aspect-ratio: 1 / 1;
+	    margin: auto;
+	    font-weight: 800;
+	}
+	
+	/* Conflict Red */
+	    .sudoku-cell.conflict::before { background-color: rgba(220, 38, 38, 0.75) !important; }
+	    .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
 
         .cell-value {
             font-size: clamp(16px, 6cqi, 30px);
@@ -171,9 +190,9 @@
 
         .note-num.highlight-identical {
             color: #ffffff;
-            background-color: #ef4444;
-            border-radius: 50%;
-            width: 85%;
+            background-color: #dc8e09;
+            border-radius: 10%;
+            width: 100%;
             aspect-ratio: 1 / 1;
             margin: auto;
             font-weight: 800;
