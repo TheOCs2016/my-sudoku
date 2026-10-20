@@ -779,13 +779,15 @@
             return null;
         }
 
-        function updateDifficultyButtons() {
-            const baseClass = "diff-btn bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold transition-colors";
-            const activeClass = "diff-btn active bg-red-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm";
-            UI.diffBtns.forEach(b => {
-                b.className = b.dataset.diff === State.diff ? activeClass : baseClass;
-            });
-        }
+	function updateDifficultyButtons() {
+	    UI.diffBtns.forEach(b => {
+        	const spanClass = (b.dataset.diff === 'unfair' || b.dataset.diff === 'extreme') ? 'col-span-3' : 'col-span-2';
+        	const baseClass = `diff-btn ${spanClass} bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold transition-colors`;
+        	const activeClass = `diff-btn ${spanClass} active bg-red-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm`;
+        
+        	b.className = b.dataset.diff === State.diff ? activeClass : baseClass;
+    	    });
+	}
 
         function restoreGameState(data) {
             State.diff = data.diff;
