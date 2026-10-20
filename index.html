@@ -76,7 +76,7 @@
 	    display: grid;
 	    grid-template-columns: repeat(3, 1fr);
 	    grid-template-rows: repeat(3, 1fr);
-	    gap: 3.5px; 
+	    gap: 3px; 
     
 	    /* 1. Change this to whatever color you want the box separators to be */
 	    background-color: #9c9c9c; /* Example: Red box separators */
@@ -96,7 +96,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 1.5px; 
+            gap: 1.2px; 
             background-color: #a89e9e;
             min-width: 0;
             min-height: 0;
@@ -117,7 +117,7 @@
         }
 
         .sudoku-cell.prefilled-bg {
-            background-color: #d4d2d2;
+            background-color: #dedcdc;
         }
 
         /* Custom Cell Colors */
@@ -137,7 +137,7 @@
         }
 
 	/* Highlight Overlays - Warm Amber/Sepia-Orange */
-     	    .sudoku-cell.highlight-area::before { background-color: rgba(245, 158, 11, 0.3); }
+     	    .sudoku-cell.highlight-area::before { background-color: rgba(245, 187, 11, 0.3); }
 	    .sudoku-cell.selected::before { background-color: rgba(245, 158, 11, 1.0) !important; }
 	    .sudoku-cell.highlight-identical::before { background-color: rgba(245, 158, 11, 1.0) !important; }
 	    .sudoku-cell.highlight-identical .cell-value { color: #0f172a !important; }
@@ -157,8 +157,8 @@
 	    .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
 
         .cell-value {
-            font-size: clamp(16px, 6cqi, 30px);
-            font-weight: 700;
+            font-size: clamp(16px, 6.5cqi, 32px);
+            font-weight: 1000;
             z-index: 2;
             transition: color 0.1s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
