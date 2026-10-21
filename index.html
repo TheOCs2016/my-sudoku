@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    
-    <!-- Force white theme regardless of user's Dark Mode preference -->
     <meta name="theme-color" content="#ffffff">
     
-    <!-- Inline Manifest to lock iOS PWA scope and prevent the Out-Of-Scope Nav Bar shadow -->
     <link rel="manifest" href='data:application/manifest+json;utf8,{"name":"Pro Sudoku","short_name":"Sudoku","display":"standalone","start_url":".","scope":".","background_color":"#ffffff","theme_color":"#ffffff"}'>
     <link rel="icon" type="favicon/png" href="favicon.png">
     <link rel="apple-touch-icon" href="favicon.png">
@@ -19,22 +16,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    
-    <!-- Include your compiled library here -->
     <script src="sudoku_bank.js"></script>
     
     <style>
-        :root {
-            --app-height: 100dvh;
-        }
+        :root { --app-height: 100dvh; }
 
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior: none; /* Prevents pull-to-refresh */
+            overscroll-behavior: none;
         }
 
-        /* Modal Transitions */
         .modal-enter {
             opacity: 0;
             transform: scale(0.95);
@@ -61,36 +53,26 @@
             visibility: visible;
         }
 
-        /* Board Sizing: Ensures perfect square bounded by viewport height */
         .board-container {
             width: 100%;
-            /* Heavily subtracts to allow the large top padding above H1 to exist without squishing the board */
             max-width: min(100%, calc(var(--app-height) - 340px)); 
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             position: relative;
         }
 
-        /* Continuous Border Grid Setup */
-	.board-outer {
-	    display: grid;
-	    grid-template-columns: repeat(3, 1fr);
-	    grid-template-rows: repeat(3, 1fr);
-	    gap: 3px; 
-    
-	    /* 1. Change this to whatever color you want the box separators to be */
-	    background-color: #9c9c9c; /* Example: Red box separators */
-	    
-	    /* 2. Recreate the outer border using the original dark gray color */
-	    border: 3px solid #171717; 
-	    
-	    /* 3. Remove padding so the border takes over */
-	    padding: 0; 
-	    
-	    width: 100%;
-	    height: 100%;
-	    box-sizing: border-box;
-	}
+        .board-outer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 3px; 
+            background-color: #9c9c9c; 
+            border: 3px solid #171717; 
+            padding: 0; 
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
 
         .board-inner {
             display: grid;
@@ -102,7 +84,6 @@
             min-height: 0;
         }
 
-        /* Cell Styling */
         .sudoku-cell {
             background-color: #ffffff;
             position: relative;
@@ -116,16 +97,12 @@
             min-height: 0;
         }
 
-        .sudoku-cell.prefilled-bg {
-            background-color: #dedcdc;
-        }
+        .sudoku-cell.prefilled-bg { background-color: #dedcdc; }
 
-        /* Custom Cell Colors */
         .cell-color-purple { background-color: #d8b4fe !important; }
         .cell-color-green { background-color: #86efac !important; }
         .cell-color-yellow { background-color: #fde047 !important; }
 
-        /* Highlight Overlays - Soft Translucency */
         .sudoku-cell::before {
             content: '';
             position: absolute;
@@ -133,28 +110,36 @@
             background-color: transparent;
             pointer-events: none;
             z-index: 1;
-            transition: background-color 0.1s;
+            transition: background-color 0.1s, box-shadow 0.1s;
         }
 
-	/* Highlight Overlays - Warm Amber/Sepia-Orange */
-     	    .sudoku-cell.highlight-area::before { background-color: rgba(245, 187, 11, 0.3); }
-	    .sudoku-cell.selected::before { background-color: rgba(245, 158, 11, 1.0) !important; }
-	    .sudoku-cell.highlight-identical::before { background-color: rgba(245, 158, 11, 1.0) !important; }
-	    .sudoku-cell.highlight-identical .cell-value { color: #0f172a !important; }
-	
-	.note-num.highlight-identical {
-	    color: #0f172a;
-	    background-color: #f59e0b;
-	    border-radius: 50%;
-	    width: 85%;
-	    aspect-ratio: 1 / 1;
-	    margin: auto;
-	    font-weight: 800;
-	}
-	
-	/* Conflict Red */
-	    .sudoku-cell.conflict::before { background-color: rgba(220, 38, 38, 0.75) !important; }
-	    .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
+        /* Highlight Styles */
+        .sudoku-cell.highlight-area::before { 
+            background-color: rgba(245, 187, 11, 0.3); 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2); /* Vignette for areas */
+        }
+        
+        .sudoku-cell.selected::before { 
+            background-color: rgba(245, 187, 11, 0.8) !important; 
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.3);
+        }
+        
+        /* Identical highlight (No vignette, lock OFF) */
+        .sudoku-cell.highlight-identical::before { 
+            background-color: rgba(245, 168, 11, 0.8) !important; 
+        }
+        
+        /* Identical highlight (Strong vignette, lock ON) */
+        .sudoku-cell.highlight-identical-locked::before { 
+            background-color: rgba(245, 158, 11, 0.9) !important; 
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5) !important;
+        }
+
+        .sudoku-cell.highlight-identical .cell-value,
+        .sudoku-cell.highlight-identical-locked .cell-value { color: #0f172a !important; }
+
+        .sudoku-cell.conflict::before { background-color: rgba(220, 38, 38, 0.75) !important; box-shadow: none; }
+        .sudoku-cell.conflict .cell-value { color: #ffffff !important; }
 
         .cell-value {
             font-size: clamp(16px, 6.5cqi, 32px);
@@ -163,9 +148,8 @@
             transition: color 0.1s, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Distinguish inputs and presets */
-        .cell-value.prefilled { color: #0f172a; } /* Slate 900 */
-        .cell-value.user-input { color: #0f172a; } /* Slate 900 */
+        .cell-value.prefilled { color: #0f172a; }
+        .cell-value.user-input { color: #0f172a; }
 
         .notes-grid {
             position: absolute;
@@ -196,6 +180,7 @@
             aspect-ratio: 1 / 1;
             margin: auto;
             font-weight: 800;
+            box-shadow: none; 
         }
 
         .locked-mode {
@@ -204,6 +189,11 @@
             position: relative;
             background-color: #fee2e2;
             border-radius: 8px;
+        }
+
+        .color-locked {
+            border-color: #1e293b !important;
+            transform: scale(1.1);
         }
 
         .toggle-active {
@@ -215,50 +205,26 @@
             transition: transform 0.1s, opacity 0.1s;
             touch-action: none;
         }
-        .numpad-btn.exhausted {
-            opacity: 0.25;
-            pointer-events: none;
-        }
-        .numpad-btn:active {
-            transform: scale(0.85);
-            opacity: 0.7;
-        }
+        .numpad-btn.exhausted { opacity: 0.25; pointer-events: none; }
+        .numpad-btn:active { transform: scale(0.85); opacity: 0.7; }
 
         .numpad-val {
             display: inline-block;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .ctrl-btn:active, .btn-color:active {
-            transform: scale(0.9);
-        }
+        .ctrl-btn:active, .btn-color:active { transform: scale(0.9); }
 
-        ::-webkit-scrollbar {
-            display: none;
-        }
+        ::-webkit-scrollbar { display: none; }
 
-        /* 
-         * LANDSCAPE PORTRAIT-LOCK TRICK 
-         */
         @media screen and (orientation: landscape) {
-            :root {
-                /* Swap the primary dimension basis in landscape */
-                --app-height: 100dvw;
-            }
+            :root { --app-height: 100dvw; }
             #app-wrapper {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100dvh;
-                height: 100dvw;
-                transform-origin: top left;
-                transform: translateY(100dvh) rotate(-90deg);
+                position: absolute; top: 0; left: 0; width: 100dvh; height: 100dvw;
+                transform-origin: top left; transform: translateY(100dvh) rotate(-90deg);
                 overflow: hidden;
             }
-            /* Only flip the numbers so they are readable sideways */
-            .cell-value, .note-num, .numpad-val {
-                transform: rotate(90deg);
-            }
+            .cell-value, .note-num, .numpad-val { transform: rotate(90deg); }
         }
     </style>
 </head>
@@ -300,18 +266,18 @@
                 </div>
             </div>
 
-            <!-- Board Wrapper -->
             <div class="flex-grow flex items-center justify-center min-h-0 mb-2 w-full px-2" style="container-type: inline-size;">
                 <div class="board-container">
-                    <div id="sudoku-board" class="board-outer">
-                        <!-- 9 Blocks generated by JS -->
-                    </div>
+                    <div id="sudoku-board" class="board-outer"></div>
                     
                     <!-- Pause Overlay -->
                     <div id="pause-overlay" class="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center hidden">
                         <span class="text-3xl font-bold tracking-widest text-slate-800 mb-8">PAUSED</span>
-                        <button id="btn-resume-overlay" class="bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
+                        <button id="btn-resume-overlay" class="w-64 bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
                             <i class="fas fa-play mr-2"></i> Resume
+                        </button>
+                        <button id="btn-pause-new" class="w-64 bg-slate-100 text-slate-700 font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-slate-200 transition-colors">
+                            Start New Game
                         </button>
                         <button id="btn-reset-overlay" class="text-slate-500 font-medium p-3 active:text-slate-800 transition-colors flex items-center gap-2">
                             <i class="fas fa-rotate-left"></i> Reset Puzzle
@@ -320,9 +286,7 @@
                 </div>
             </div>
 
-            <!-- Controls -->
             <div class="shrink-0 flex flex-col gap-4 sm:gap-5 w-full">
-                <!-- Upper Control Line -->
                 <div class="flex justify-around items-center px-4">
                     <button id="btn-undo" class="ctrl-btn flex flex-col items-center gap-1.5 text-slate-500 p-2 rounded-xl transition-all">
                         <i class="fas fa-undo text-xl sm:text-2xl"></i>
@@ -342,18 +306,15 @@
                     </button>
                 </div>
 
-                <!-- Lower Control Line: Keypad -->
-                <div class="flex justify-between items-center px-3" id="keypad">
-                    <!-- Keys 1-9 generated by JS -->
-                </div>
+                <div class="flex justify-between items-center px-3" id="keypad"></div>
 
-                <!-- Tools & Modifiers -->
                 <div class="flex justify-between items-center px-4 w-full max-w-sm mx-auto">
                     <label class="flex items-center gap-2 cursor-pointer text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider select-none transition-colors hover:text-slate-700">
                         <input type="checkbox" id="toggle-candidates" class="w-4 h-4 accent-red-600 rounded cursor-pointer">
                         Show Candidates
                     </label>
-                    <div class="flex gap-2.5" id="color-palette">
+                    <div class="flex gap-2.5 items-center" id="color-palette">
+                        <button id="btn-toggle-colors" class="text-slate-400 active:text-slate-600 mr-1 p-1"><i class="fas fa-eye text-lg"></i></button>
                         <button class="btn-color w-6 h-6 rounded-full border-2 border-slate-200 bg-white shadow-sm transition-transform" data-color="none"></button>
                         <button class="btn-color w-6 h-6 rounded-full border-2 border-purple-400 bg-purple-300 shadow-sm transition-transform" data-color="purple"></button>
                         <button class="btn-color w-6 h-6 rounded-full border-2 border-green-400 bg-green-300 shadow-sm transition-transform" data-color="green"></button>
@@ -363,8 +324,9 @@
             </div>
         </div>
 
-        
-        <!-- Reset/Clear Confirmation Modal -->
+        <!-- File Input for loading data -->
+        <input type="file" id="data-file-input" accept=".json" class="hidden">
+
         <div id="confirm-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
             <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
                 <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -379,23 +341,32 @@
             </div>
         </div>
 
-        <!-- Stats Modal -->
         <div id="stats-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center modal-enter">
             <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 shadow-xl mx-4 transform transition-transform">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-trophy text-red-600"></i> Best Times</h2>
                     <button id="close-stats" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
                 </div>
-                <div class="flex flex-col gap-4" id="stats-list-container">
-                    <!-- Populated by JS -->
-                </div>
+                <div class="flex flex-col gap-4" id="stats-list-container"></div>
             </div>
         </div>
 
-        <!-- Difficulty Selection Modal (Post-Win) -->
+        <div id="load-game-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center modal-enter">
+            <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 shadow-xl mx-4 transform transition-transform">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Load Game</h2>
+                    <button id="close-load-game" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="flex flex-col gap-3" id="load-game-list-container"></div>
+            </div>
+        </div>
+
         <div id="diff-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center fade-enter">
             <div class="bg-white w-full max-w-[320px] rounded-2xl p-6 text-center shadow-xl mx-4 transform transition-transform">
-                <h3 class="text-xl font-bold text-slate-800 mb-4">Select Difficulty</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-slate-800">Select Difficulty</h3>
+                    <button id="btn-diff-cancel" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+                </div>
                 <div class="flex flex-col gap-3">
                     <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="easy">Easy</button>
                     <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="medium">Medium</button>
@@ -403,11 +374,9 @@
                     <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="unfair">Unfair</button>
                     <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="extreme">Extreme</button>
                 </div>
-                <button id="btn-diff-cancel" class="mt-4 text-slate-500 font-medium p-2 active:text-slate-800">Cancel</button>
             </div>
         </div>
 
-        <!-- Settings Modal -->
         <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 z-50 flex items-end sm:items-center justify-center modal-enter">
             <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[calc(var(--app-height)*0.9)] overflow-y-auto flex flex-col shadow-2xl">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm rounded-t-2xl z-10">
@@ -416,19 +385,6 @@
                 </div>
                 
                 <div class="p-6 flex flex-col gap-8">
-                    <!-- Difficulty -->
-		    <div>
-    			<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Difficulty</h3>
-    			<div class="grid grid-cols-6 gap-2">
-		            <button class="diff-btn col-span-2" data-diff="easy">Easy</button>
-		            <button class="diff-btn col-span-2" data-diff="medium">Medium</button>
-		            <button class="diff-btn col-span-2" data-diff="hard">Hard</button>
-		            <button class="diff-btn col-span-3" data-diff="unfair">Unfair</button>
-			    <button class="diff-btn col-span-3" data-diff="extreme">Extreme</button>
-    			</div>
-		    </div>
-
-                    <!-- Toggles -->
                     <div>
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Highlighting Options</h3>
                         <div class="flex flex-col gap-4">
@@ -455,14 +411,25 @@
                         </div>
                     </div>
 
-                    <button id="btn-new-game" class="w-full bg-red-600 text-white font-bold py-4 rounded-xl text-lg shadow-md active:bg-red-700 transition-colors">
-                        Start New Game
-                    </button>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Data Transfer & Tools</h3>
+                        <div class="flex flex-col gap-3">
+                            <button id="btn-copy-vals" class="w-full bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Copy Values</button>
+                            <button id="btn-create-puzzle" class="w-full bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Create a Puzzle</button>
+                            <div class="flex gap-3">
+                                <button id="btn-save-game" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Save</button>
+                                <button id="btn-load-game" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Load</button>
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="btn-export-data" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Export Data</button>
+                                <button id="btn-import-data" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors">Import Data</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Win Modal -->
         <div id="win-modal" class="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center modal-enter">
             <div class="text-center px-6 max-w-sm w-full">
                 <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
@@ -487,11 +454,7 @@
 
     <script>
         class SudokuGenerator {
-            constructor() {
-                this.N = 9;
-                this.SRN = 3;
-            }
-
+            constructor() { this.N = 9; this.SRN = 3; }
             generate(K) {
                 this.mat = Array.from({length: this.N}, () => Array(this.N).fill(0));
                 this.fillValues();
@@ -499,16 +462,8 @@
                 this.removeKDigits(K);
                 return { puzzle: this.mat, solution: solution };
             }
-
-            fillValues() {
-                this.fillDiagonal();
-                this.fillRemaining(0, this.SRN);
-            }
-
-            fillDiagonal() {
-                for (let i = 0; i < this.N; i = i + this.SRN) this.fillBox(i, i);
-            }
-
+            fillValues() { this.fillDiagonal(); this.fillRemaining(0, this.SRN); }
+            fillDiagonal() { for (let i = 0; i < this.N; i = i + this.SRN) this.fillBox(i, i); }
             unUsedInBox(rowStart, colStart, num) {
                 for (let i = 0; i < this.SRN; i++) {
                     for (let j = 0; j < this.SRN; j++) {
@@ -517,54 +472,33 @@
                 }
                 return true;
             }
-
             fillBox(rowStart, colStart) {
                 let num;
                 for (let i = 0; i < this.SRN; i++) {
                     for (let j = 0; j < this.SRN; j++) {
-                        do {
-                            num = Math.floor(Math.random() * this.N + 1);
+                        do { num = Math.floor(Math.random() * this.N + 1);
                         } while (!this.unUsedInBox(rowStart, colStart, num));
                         this.mat[rowStart + i][colStart + j] = num;
                     }
                 }
             }
-
             checkIfSafe(i, j, num) {
-                return (
-                    this.unUsedInRow(i, num) &&
-                    this.unUsedInCol(j, num) &&
-                    this.unUsedInBox(i - (i % this.SRN), j - (j % this.SRN), num)
-                );
+                return (this.unUsedInRow(i, num) && this.unUsedInCol(j, num) && this.unUsedInBox(i - (i % this.SRN), j - (j % this.SRN), num));
             }
-
             unUsedInRow(i, num) {
-                for (let j = 0; j < this.N; j++) {
-                    if (this.mat[i][j] === num) return false;
-                }
+                for (let j = 0; j < this.N; j++) if (this.mat[i][j] === num) return false;
                 return true;
             }
-
             unUsedInCol(j, num) {
-                for (let i = 0; i < this.N; i++) {
-                    if (this.mat[i][j] === num) return false;
-                }
+                for (let i = 0; i < this.N; i++) if (this.mat[i][j] === num) return false;
                 return true;
             }
-
             fillRemaining(i, j) {
                 if (j >= this.N && i < this.N - 1) { i = i + 1; j = 0; }
                 if (i >= this.N && j >= this.N) return true;
-                if (i < this.SRN) {
-                    if (j < this.SRN) j = this.SRN;
-                } else if (i < this.N - this.SRN) {
-                    if (j === Math.floor(i / this.SRN) * this.SRN) j = j + this.SRN;
-                } else {
-                    if (j === this.N - this.SRN) {
-                        i = i + 1; j = 0;
-                        if (i >= this.N) return true;
-                    }
-                }
+                if (i < this.SRN) { if (j < this.SRN) j = this.SRN; }
+                else if (i < this.N - this.SRN) { if (j === Math.floor(i / this.SRN) * this.SRN) j = j + this.SRN; }
+                else { if (j === this.N - this.SRN) { i = i + 1; j = 0; if (i >= this.N) return true; } }
 
                 for (let num = 1; num <= this.N; num++) {
                     if (this.checkIfSafe(i, j, num)) {
@@ -575,7 +509,6 @@
                 }
                 return false;
             }
-
             countSolutions(grid, count) {
                 let row = -1, col = -1, isEmpty = false;
                 for(let i=0; i<9; i++) {
@@ -584,9 +517,7 @@
                     }
                     if(isEmpty) break;
                 }
-                
                 if(!isEmpty) return count + 1;
-
                 for(let num=1; num<=9; num++) {
                     if(this.isSafeForSolver(grid, row, col, num)) {
                         grid[row][col] = num;
@@ -597,7 +528,6 @@
                 }
                 return count;
             }
-
             isSafeForSolver(grid, row, col, num) {
                 for(let x=0; x<9; x++) if(grid[row][x] === num) return false;
                 for(let x=0; x<9; x++) if(grid[x][col] === num) return false;
@@ -609,7 +539,6 @@
                 }
                 return true;
             }
-
             solveGrid(grid) {
                 let row = -1, col = -1, isEmpty = false;
                 for(let i=0; i<9; i++) {
@@ -619,7 +548,6 @@
                     if(isEmpty) break;
                 }
                 if(!isEmpty) return true;
-
                 for(let num=1; num<=9; num++) {
                     if(this.isSafeForSolver(grid, row, col, num)) {
                         grid[row][col] = num;
@@ -629,7 +557,6 @@
                 }
                 return false;
             }
-
             removeKDigits(K) {
                 let positions = [];
                 for(let i=0; i<81; i++) positions.push(i);
@@ -637,7 +564,6 @@
                     const j = Math.floor(Math.random() * (i+1));
                     [positions[i], positions[j]] = [positions[j], positions[i]];
                 }
-
                 let removed = 0;
                 for(let i=0; i<81 && removed < K; i++) {
                     let cellId = positions[i];
@@ -647,17 +573,13 @@
                         let backup = this.mat[r][c];
                         this.mat[r][c] = 0;
                         let copy = this.mat.map(row => [...row]);
-                        if (this.countSolutions(copy, 0) !== 1) {
-                            this.mat[r][c] = backup; 
-                        } else {
-                            removed++;
-                        }
+                        if (this.countSolutions(copy, 0) !== 1) this.mat[r][c] = backup; 
+                        else removed++;
                     }
                 }
             }
         }
 
-        // --- GLOBAL STATE ---
         const UI = {
             board: document.getElementById('sudoku-board'),
             keypad: document.getElementById('keypad'),
@@ -673,6 +595,7 @@
             
             toggleCandidates: document.getElementById('toggle-candidates'),
             colorBtns: document.querySelectorAll('.btn-color'),
+            btnToggleColors: document.getElementById('btn-toggle-colors'),
 
             btnStatsModal: document.getElementById('btn-stats-modal'),
             statsModal: document.getElementById('stats-modal'),
@@ -683,11 +606,10 @@
             btnPauseH1: document.getElementById('btn-pause-h1'),
             btnResumeOverlay: document.getElementById('btn-resume-overlay'),
             btnResetOverlay: document.getElementById('btn-reset-overlay'),
+            btnPauseNew: document.getElementById('btn-pause-new'),
             
             settingsModal: document.getElementById('settings-modal'),
             btnCloseSettings: document.getElementById('close-settings'),
-            btnNewGame: document.getElementById('btn-new-game'),
-            diffBtns: document.querySelectorAll('.diff-btn'),
             
             confirmModal: document.getElementById('confirm-modal'),
             btnConfirmYes: document.getElementById('btn-confirm-yes'),
@@ -696,6 +618,19 @@
             diffModal: document.getElementById('diff-modal'),
             btnDiffCancel: document.getElementById('btn-diff-cancel'),
             winDiffBtns: document.querySelectorAll('.win-diff-btn'),
+
+            btnCopyVals: document.getElementById('btn-copy-vals'),
+            btnCreatePuzzle: document.getElementById('btn-create-puzzle'),
+            btnSaveGame: document.getElementById('btn-save-game'),
+            
+            btnLoadGame: document.getElementById('btn-load-game'),
+            loadGameModal: document.getElementById('load-game-modal'),
+            closeLoadGame: document.getElementById('close-load-game'),
+            loadGameList: document.getElementById('load-game-list-container'),
+            
+            btnExportData: document.getElementById('btn-export-data'),
+            btnImportData: document.getElementById('btn-import-data'),
+            fileInput: document.getElementById('data-file-input'),
 
             toggles: {
                 row: document.getElementById('toggle-row'),
@@ -715,130 +650,79 @@
         };
 
         const difficulties = { easy: 30, medium: 45, hard: 55, unfair: 60, extreme: 64 };
-        
-        const TIER_M_VALUES = {
-            'easy': 24,
-            'medium': 39,
-            'hard': 49,
-            'unfair': 69,
-            'extreme': 94
-        };
-
+        const TIER_M_VALUES = { 'easy': 24, 'medium': 39, 'hard': 49, 'unfair': 69, 'extreme': 94 };
         const SAVE_KEY = 'sudoku_save_state_oc';
 
         const State = {
             diff: 'easy',
-            grid: [], 
-            solution: [],
+	    isCustom: false,
+            grid: [], solution: [],
             selected: null, 
             lockedNumber: null,
-            showAreaHighlight: true, // Controls row/col/box rendering during locks
+            lockedColor: null,
+            showAreaHighlight: true, 
             notesMode: false,
-            history: [],
-            future: [], // Added for Redo
+            showColors: true,
+            history: [], future: [],
             timerInterval: null,
-            isWon: false,
-            isPaused: false,
-            accumulatedTime: 0,
-            lastStartTime: 0,
-            currentBankRating: null, // Used to map new N of M displays
+            isWon: false, isPaused: false,
+            accumulatedTime: 0, lastStartTime: 0,
+            currentBankRating: null,
             topTimes: { easy: [], medium: [], hard: [], unfair: [], extreme: [] } 
         };
 
-        // --- CORE FUNCTIONS ---
         function loadTopTimes() {
             try {
                 const saved = localStorage.getItem('sudoku_top_times_oc');
                 if (saved) {
                     const parsed = JSON.parse(saved);
-                    Object.keys(State.topTimes).forEach(k => {
-                        if (parsed[k]) State.topTimes[k] = parsed[k];
-                    });
+                    Object.keys(State.topTimes).forEach(k => { if (parsed[k]) State.topTimes[k] = parsed[k]; });
                 }
             } catch(e){}
         }
 
         function saveTopTimes() {
-            try {
-                localStorage.setItem('sudoku_top_times_oc', JSON.stringify(State.topTimes));
-            } catch(e){}
+            try { localStorage.setItem('sudoku_top_times_oc', JSON.stringify(State.topTimes)); } catch(e){}
         }
 
         function saveGameState() {
-            if (State.isWon) {
-                localStorage.removeItem(SAVE_KEY);
-                return;
-            }
-            
+            if (State.isWon) { localStorage.removeItem(SAVE_KEY); return; }
             let currentTime = State.accumulatedTime;
-            if (!State.isPaused && State.lastStartTime) {
-                currentTime += (Date.now() - State.lastStartTime);
-            }
-
+            if (!State.isPaused && State.lastStartTime) currentTime += (Date.now() - State.lastStartTime);
+            
             const saveData = {
-                diff: State.diff,
-                grid: State.grid,
-                solution: State.solution,
-                history: State.history,
-                future: State.future,
-                accumulatedTime: currentTime,
-                notesMode: State.notesMode,
-                currentBankRating: State.currentBankRating
+                diff: State.diff, isCustom: State.isCustom, grid: State.grid, solution: State.solution,
+                history: State.history, future: State.future, accumulatedTime: currentTime,
+                notesMode: State.notesMode, currentBankRating: State.currentBankRating
             };
-            try {
-                localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-            } catch(e) {}
+            try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveData)); } catch(e) {}
         }
 
         function loadGameState() {
-            try {
-                const saved = localStorage.getItem(SAVE_KEY);
-                if (saved) return JSON.parse(saved);
-            } catch(e) {}
+            try { const saved = localStorage.getItem(SAVE_KEY); if (saved) return JSON.parse(saved); } catch(e) {}
             return null;
         }
 
-	function updateDifficultyButtons() {
-	    UI.diffBtns.forEach(b => {
-        	const spanClass = (b.dataset.diff === 'unfair' || b.dataset.diff === 'extreme') ? 'col-span-3' : 'col-span-2';
-        	const baseClass = `diff-btn ${spanClass} bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-semibold transition-colors`;
-        	const activeClass = `diff-btn ${spanClass} active bg-red-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm`;
-        
-        	b.className = b.dataset.diff === State.diff ? activeClass : baseClass;
-    	    });
-	}
-
         function restoreGameState(data) {
-            State.diff = data.diff;
-            State.grid = data.grid;
-            State.solution = data.solution;
-            State.history = data.history || [];
-            State.future = data.future || [];
+            State.diff = data.diff; State.isCustom = data.isCustom || false; State.grid = data.grid; State.solution = data.solution;
+            State.history = data.history || []; State.future = data.future || [];
             State.accumulatedTime = data.accumulatedTime || 0;
-            State.notesMode = data.notesMode || false;
-            State.currentBankRating = data.currentBankRating || null;
+            State.notesMode = data.notesMode || false; State.currentBankRating = data.currentBankRating || null;
             
-            State.selected = null;
-            State.isWon = false;
-            State.isPaused = true; 
-            State.lockedNumber = null;
-            State.showAreaHighlight = true;
+            State.selected = null; State.isWon = false; State.isPaused = true; 
+            State.lockedNumber = null; State.showAreaHighlight = true;
             
             UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
-
             UI.settingsModal.classList.remove('modal-enter-active');
             UI.winModal.classList.remove('modal-enter-active');
             
-            updateDifficultyButtons();
             updateHeaderUI();
-            
             State.lastStartTime = Date.now();
             clearInterval(State.timerInterval);
             UI.timer.textContent = formatTime(State.accumulatedTime);
             
             document.getElementById('pause-overlay').style.display = 'flex';
             UI.btnPauseH1.innerHTML = '<i class="fas fa-play text-xl"></i>';
-
             renderBoard();
         }
 
@@ -847,33 +731,24 @@
             buildBoardDOM();
             buildKeypadDOM();
             setupEventListeners();
-
             const savedState = loadGameState();
-            if (savedState) {
-                restoreGameState(savedState);
-            } else {
-                startNewGame();
-            }
+            if (savedState) restoreGameState(savedState);
+            else startNewGame();
         }
 
         function buildBoardDOM() {
             UI.board.innerHTML = '';
             UI.cells = Array.from({length: 9}, () => Array(9).fill(null));
-
             for (let br = 0; br < 3; br++) {
                 for (let bc = 0; bc < 3; bc++) {
                     const block = document.createElement('div');
                     block.className = 'board-inner';
-                    
                     for (let cr = 0; cr < 3; cr++) {
                         for (let cc = 0; cc < 3; cc++) {
-                            const r = br * 3 + cr;
-                            const c = bc * 3 + cc;
-                            
+                            const r = br * 3 + cr, c = bc * 3 + cc;
                             const cell = document.createElement('div');
                             cell.className = 'sudoku-cell';
-                            cell.dataset.r = r;
-                            cell.dataset.c = c;
+                            cell.dataset.r = r; cell.dataset.c = c;
 
                             const valSpan = document.createElement('span');
                             valSpan.className = 'cell-value';
@@ -883,12 +758,10 @@
                             notesGrid.className = 'notes-grid';
                             for (let n = 1; n <= 9; n++) {
                                 const noteSpan = document.createElement('span');
-                                noteSpan.className = 'note-num';
-                                noteSpan.dataset.n = n;
+                                noteSpan.className = 'note-num'; noteSpan.dataset.n = n;
                                 notesGrid.appendChild(noteSpan);
                             }
                             cell.appendChild(notesGrid);
-
                             block.appendChild(cell);
                             UI.cells[r][c] = { root: cell, valEl: valSpan, notesEl: notesGrid };
                         }
@@ -904,13 +777,9 @@
                 const btn = document.createElement('button');
                 btn.className = 'numpad-btn text-3xl sm:text-[40px] text-slate-700 font-medium w-10 sm:w-12 h-14 flex items-center justify-center';
                 btn.dataset.val = i;
-                
                 const span = document.createElement('span');
-                span.className = 'numpad-val pointer-events-none';
-                span.textContent = i;
-                
-                btn.appendChild(span);
-                UI.keypad.appendChild(btn);
+                span.className = 'numpad-val pointer-events-none'; span.textContent = i;
+                btn.appendChild(span); UI.keypad.appendChild(btn);
             }
         }
 
@@ -918,85 +787,60 @@
             let grid = [];
             for (let i = 0; i < 9; i++) {
                 let row = [];
-                for (let j = 0; j < 9; j++) {
-                    row.push(parseInt(str[i * 9 + j], 10) || 0);
-                }
+                for (let j = 0; j < 9; j++) row.push(parseInt(str[i * 9 + j], 10) || 0);
                 grid.push(row);
             }
             return grid;
         }
 
-        function startNewGame() {
+        function startNewGame(customGridStr = null) {
+	    State.isCustom = !!(customGridStr && customGridStr.length === 81);
             let data = null;
             State.currentBankRating = null;
             const gen = new SudokuGenerator();
 
-            if (window.SUDOKU_MASTER_BANK) {
+            if (customGridStr && customGridStr.length === 81) {
+                let puzzleGrid = stringToGrid(customGridStr);
+                let solutionGrid = stringToGrid(customGridStr);
+                gen.solveGrid(solutionGrid);
+                data = { puzzle: puzzleGrid, solution: solutionGrid };
+            } else if (window.SUDOKU_MASTER_BANK) {
                 let tierKey = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
                 if (tierKey === 'Extreme') tierKey = 'Expert'; 
-                
                 let bankTier;
-                // Add robust handling for flat arrays vs old grouped object logic
                 if (Array.isArray(window.SUDOKU_MASTER_BANK)) {
                     bankTier = window.SUDOKU_MASTER_BANK.filter(p => p.tier && p.tier.toLowerCase() === State.diff.toLowerCase());
-                    if (!bankTier || bankTier.length === 0) {
-                        bankTier = window.SUDOKU_MASTER_BANK[tierKey] || window.SUDOKU_MASTER_BANK['Extreme'] || window.SUDOKU_MASTER_BANK['Expert'];
-                    }
+                    if (!bankTier || bankTier.length === 0) bankTier = window.SUDOKU_MASTER_BANK[tierKey] || window.SUDOKU_MASTER_BANK['Extreme'] || window.SUDOKU_MASTER_BANK['Expert'];
                 } else {
                     bankTier = window.SUDOKU_MASTER_BANK[tierKey] || window.SUDOKU_MASTER_BANK['Extreme'] || window.SUDOKU_MASTER_BANK['Expert'];
                 }
                 
                 if (bankTier && bankTier.length > 0) {
-                    const randIdx = Math.floor(Math.random() * bankTier.length);
-                    const item = bankTier[randIdx];
-                    
-                    if (item.bankRating) {
-                        State.currentBankRating = item.bankRating;
-                    }
-
+                    const item = bankTier[Math.floor(Math.random() * bankTier.length)];
+                    if (item.bankRating) State.currentBankRating = item.bankRating;
                     const puzzleStr = item.p || item.puzzle;
                     const solStr = item.s || item.solution;
-                    
                     let puzzleGrid = stringToGrid(puzzleStr);
-                    let solutionGrid = null;
-                    
-                    if (solStr && solStr.length === 81) {
-                        solutionGrid = stringToGrid(solStr);
-                    } else {
-                        solutionGrid = stringToGrid(puzzleStr);
-                        gen.solveGrid(solutionGrid);
-                    }
+                    let solutionGrid = (solStr && solStr.length === 81) ? stringToGrid(solStr) : stringToGrid(puzzleStr);
+                    if(!solStr) gen.solveGrid(solutionGrid);
                     data = { puzzle: puzzleGrid, solution: solutionGrid };
                 }
             }
 
-            if (!data) {
-                const K = difficulties[State.diff];
-                data = gen.generate(K);
-            }
-
+            if (!data) data = gen.generate(difficulties[State.diff]);
+            
             State.solution = data.solution;
             State.grid = [];
-            
             for (let r = 0; r < 9; r++) {
                 let row = [];
                 for (let c = 0; c < 9; c++) {
                     const val = data.puzzle[r][c];
-                    row.push({
-                        val: val,
-                        initial: val !== 0,
-                        notes: Array(10).fill(false),
-                        color: null
-                    });
+                    row.push({ val: val, initial: val !== 0, notes: Array(10).fill(false), color: null });
                 }
                 State.grid.push(row);
             }
 
-            State.selected = null;
-            State.history = [];
-            State.future = [];
-            State.isWon = false;
-            
+            State.selected = null; State.history = []; State.future = []; State.isWon = false;
             if (State.isPaused) togglePause(); 
             
             UI.settingsModal.classList.remove('modal-enter-active');
@@ -1004,32 +848,23 @@
             UI.diffModal.classList.remove('fade-enter-active');
             UI.confirmModal.classList.remove('fade-enter-active');
             
-            updateDifficultyButtons();
-            updateHeaderUI();
-            resetTimer();
-            renderBoard();
-            saveGameState();
+            updateHeaderUI(); resetTimer(); renderBoard(); saveGameState();
         }
 
         function updateHeaderUI() {
-            UI.diffDisplay.textContent = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
-            
+	    UI.diffDisplay.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
             if (State.currentBankRating) {
                 const nVal = Math.round(State.currentBankRating * 10);
                 const mVal = TIER_M_VALUES[State.diff] || 99;
                 UI.bankRatingDisplay.textContent = `${nVal} OF ${mVal}`;
                 UI.bankRatingDisplay.classList.remove('hidden');
-            } else {
-                UI.bankRatingDisplay.classList.add('hidden');
-            }
-
+            } else { UI.bankRatingDisplay.classList.add('hidden'); }
             const times = State.topTimes[State.diff];
             UI.record.textContent = times.length > 0 ? formatTime(times[0]) : '--:--';
         }
 
         function resetTimer() {
-            State.accumulatedTime = 0;
-            State.lastStartTime = Date.now();
+            State.accumulatedTime = 0; State.lastStartTime = Date.now();
             clearInterval(State.timerInterval);
             State.timerInterval = setInterval(updateTimerDisplay, 1000);
             updateTimerDisplay();
@@ -1042,10 +877,8 @@
         }
 
         function togglePause() {
-            if (State.isWon) return;
             State.isPaused = !State.isPaused;
             const overlay = document.getElementById('pause-overlay');
-            
             if (State.isPaused) {
                 State.accumulatedTime += (Date.now() - State.lastStartTime);
                 clearInterval(State.timerInterval);
@@ -1063,35 +896,21 @@
             for(let r=0; r<9; r++) {
                 for(let c=0; c<9; c++) {
                     const cell = State.grid[r][c];
-                    if(!cell.initial) {
-                        cell.val = 0;
-                        cell.notes = Array(10).fill(false);
-                    }
+                    if(!cell.initial) { cell.val = 0; cell.notes = Array(10).fill(false); }
                     cell.color = null;
                 }
             }
-            State.history = [];
-            State.future = [];
-            State.selected = null;
-            
+            State.history = []; State.future = []; State.selected = null;
             if (State.isPaused) togglePause();
-            resetTimer();
-            renderBoard();
-            
+            resetTimer(); renderBoard();
             UI.confirmModal.classList.remove('fade-enter-active');
             saveGameState();
         }
         
         function executeClearNotes() {
             saveHistory();
-            for(let r=0; r<9; r++) {
-                for(let c=0; c<9; c++) {
-                    State.grid[r][c].notes = Array(10).fill(false);
-                }
-            }
-            renderBoard();
-            UI.confirmModal.classList.remove('fade-enter-active');
-            saveGameState();
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) State.grid[r][c].notes = Array(10).fill(false);
+            renderBoard(); UI.confirmModal.classList.remove('fade-enter-active'); saveGameState();
         }
 
         function formatTime(ms) {
@@ -1108,15 +927,10 @@
                     let v = State.grid[r][c].val;
                     if(v !== 0) {
                         for(let i=0; i<9; i++) {
-                            validCands[r][i] &= ~(1<<(v-1));
-                            validCands[i][c] &= ~(1<<(v-1));
+                            validCands[r][i] &= ~(1<<(v-1)); validCands[i][c] &= ~(1<<(v-1));
                         }
                         let br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-                        for(let i=0; i<3; i++) {
-                            for(let j=0; j<3; j++) {
-                                validCands[br+i][bc+j] &= ~(1<<(v-1));
-                            }
-                        }
+                        for(let i=0; i<3; i++) for(let j=0; j<3; j++) validCands[br+i][bc+j] &= ~(1<<(v-1));
                     }
                 }
             }
@@ -1125,18 +939,16 @@
 
         function renderBoard() {
             const conflicts = getConflicts();
-            
-            let highlightVal = null;
-            if (State.lockedNumber !== null) {
-                highlightVal = State.lockedNumber;
-            } else if (State.selected && UI.toggles.ident.checked) {
-                const selCell = State.grid[State.selected.r][State.selected.c];
-                if (selCell.val !== 0) highlightVal = selCell.val;
-            }
+            let highlightVal = State.lockedNumber !== null ? State.lockedNumber : 
+                              (State.selected && UI.toggles.ident.checked ? State.grid[State.selected.r][State.selected.c].val : null);
+            if(highlightVal === 0) highlightVal = null;
 
             let counts = Array(10).fill(0);
             let showCands = UI.toggleCandidates.checked;
             let validCands = showCands ? getValidCandidates() : null;
+            
+            // Only show area highlight if notes mode is OFF
+            let showArea = State.showAreaHighlight && !State.notesMode;
 
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
@@ -1149,10 +961,11 @@
                     root.className = 'sudoku-cell';
                     if (data.initial) root.classList.add('prefilled-bg');
                     
-                    // Individual Cell Colors
-                    if (data.color === 'purple') root.classList.add('cell-color-purple');
-                    else if (data.color === 'green') root.classList.add('cell-color-green');
-                    else if (data.color === 'yellow') root.classList.add('cell-color-yellow');
+                    if (State.showColors && data.color) {
+                        if (data.color === 'purple') root.classList.add('cell-color-purple');
+                        else if (data.color === 'green') root.classList.add('cell-color-green');
+                        else if (data.color === 'yellow') root.classList.add('cell-color-yellow');
+                    }
                     
                     if (data.val !== 0) {
                         uiCell.valEl.textContent = data.val;
@@ -1161,55 +974,40 @@
                     } else {
                         uiCell.valEl.textContent = '';
                         uiCell.notesEl.style.display = 'grid';
-                        
-                        const noteSpans = uiCell.notesEl.children;
                         for (let i = 1; i <= 9; i++) {
-                            const span = noteSpans[i-1];
-                            let isNoteVisible = false;
-                            
-                            if (showCands) {
-                                isNoteVisible = (validCands[r][c] & (1<<(i-1))) !== 0;
-                            } else {
-                                isNoteVisible = data.notes[i];
-                            }
-                            
+                            const span = uiCell.notesEl.children[i-1];
+                            let isNoteVisible = showCands ? (validCands[r][c] & (1<<(i-1))) !== 0 : data.notes[i];
                             span.textContent = isNoteVisible ? i : '';
                             
-                            if (isNoteVisible && highlightVal === i && UI.toggles.ident.checked) {
-                                span.classList.add('highlight-identical');
-                            } else {
-                                span.classList.remove('highlight-identical');
-                            }
+                            // Notes mode identical highlight mapping (No vignette applied to notes per CSS)
+                            if (isNoteVisible && highlightVal === i && UI.toggles.ident.checked) span.classList.add('highlight-identical');
+                            else span.classList.remove('highlight-identical');
                         }
                     }
 
                     if (State.selected) {
                         const isSameRow = r === State.selected.r;
                         const isSameCol = c === State.selected.c;
-                        const isSameBox = Math.floor(r/3) === Math.floor(State.selected.r/3) && 
-                                          Math.floor(c/3) === Math.floor(State.selected.c/3);
+                        const isSameBox = Math.floor(r/3) === Math.floor(State.selected.r/3) && Math.floor(c/3) === Math.floor(State.selected.c/3);
                         
                         let areaHighlight = false;
-                        if (State.showAreaHighlight) {
+                        if (showArea) {
                             if (UI.toggles.row.checked && isSameRow) areaHighlight = true;
                             if (UI.toggles.col.checked && isSameCol) areaHighlight = true;
                             if (UI.toggles.box.checked && isSameBox) areaHighlight = true;
                         }
 
                         if (areaHighlight) root.classList.add('highlight-area');
-                        if (isSameRow && isSameCol) {
-                            root.classList.remove('highlight-area');
-                            root.classList.add('selected');
-                        }
+                        if (isSameRow && isSameCol) { root.classList.remove('highlight-area'); root.classList.add('selected'); }
                     }
 
+                    // Identical answered numbers handling
                     if (highlightVal !== null && data.val === highlightVal) {
-                        root.classList.add('highlight-identical');
+                        if (State.lockedNumber !== null) root.classList.add('highlight-identical-locked'); // Strong vignette
+                        else root.classList.add('highlight-identical'); // No vignette
                     }
 
-                    if (UI.toggles.conflict.checked && conflicts[r][c]) {
-                        root.classList.add('conflict');
-                    }
+                    if (UI.toggles.conflict.checked && conflicts[r][c]) root.classList.add('conflict');
                 }
             }
 
@@ -1223,12 +1021,10 @@
         function getConflicts() {
             let conflicts = Array.from({length: 9}, () => Array(9).fill(false));
             if (!UI.toggles.conflict.checked) return conflicts;
-
             for(let r=0; r<9; r++) {
                for(let c=0; c<9; c++) {
                    const v = State.grid[r][c].val;
                    if (v === 0) continue;
-                   
                    for(let i=0; i<9; i++) {
                        if(i !== c && State.grid[r][i].val === v) { conflicts[r][c] = true; conflicts[r][i] = true; }
                        if(i !== r && State.grid[i][c].val === v) { conflicts[r][c] = true; conflicts[i][c] = true; }
@@ -1237,9 +1033,7 @@
                    for(let i=0; i<3; i++) {
                        for(let j=0; j<3; j++) {
                            let rr = br+i, cc = bc+j;
-                           if ((rr !== r || cc !== c) && State.grid[rr][cc].val === v) {
-                               conflicts[r][c] = true; conflicts[rr][cc] = true;
-                           }
+                           if ((rr !== r || cc !== c) && State.grid[rr][cc].val === v) { conflicts[r][c] = true; conflicts[rr][cc] = true; }
                        }
                    }
                }
@@ -1247,46 +1041,46 @@
             return conflicts;
         }
 
-        function saveHistory() {
-            State.history.push(JSON.parse(JSON.stringify(State.grid)));
-            State.future = []; 
-        }
-
+        function saveHistory() { State.history.push(JSON.parse(JSON.stringify(State.grid))); State.future = []; }
         function getBoardCounts() {
             let counts = Array(10).fill(0);
-            for(let r=0; r<9; r++) {
-                for(let c=0; c<9; c++) {
-                    if(State.grid[r][c].val !== 0) counts[State.grid[r][c].val]++;
-                }
-            }
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(State.grid[r][c].val !== 0) counts[State.grid[r][c].val]++;
             return counts;
         }
 
         function setLock(val, fromKeypad = false) {
             State.lockedNumber = val;
-            if (fromKeypad) {
-                State.selected = null; 
-                State.showAreaHighlight = false;
-            }
-            const keys = document.querySelectorAll('.numpad-btn');
-            keys.forEach(k => k.classList.remove('locked-mode'));
+            if (fromKeypad) { State.selected = null; State.showAreaHighlight = false; }
+            document.querySelectorAll('.numpad-btn').forEach(k => k.classList.remove('locked-mode'));
             if (val !== null) {
                 const btn = document.querySelector(`.numpad-btn[data-val="${val}"]`);
                 if(btn) btn.classList.add('locked-mode');
             }
             renderBoard();
         }
+        
+        function setColorLock(color) {
+            State.lockedColor = (State.lockedColor === color) ? null : color;
+            UI.colorBtns.forEach(btn => {
+                if(btn.dataset.color === State.lockedColor && color !== 'none') btn.classList.add('color-locked');
+                else btn.classList.remove('color-locked');
+            });
+            if(color === 'none') State.lockedColor = null;
+        }
 
         function handleCellClick(r, c) {
             if (State.isWon || State.isPaused) return;
-
             const cell = State.grid[r][c];
 
-            // Tapping an unlocked, already-selected cell deselects it
+            // Color application via lock
+            if (State.lockedColor !== null) {
+                saveHistory();
+                cell.color = (cell.color === State.lockedColor) ? null : State.lockedColor;
+                renderBoard(); saveGameState(); return;
+            }
+
             if (State.lockedNumber === null && State.selected && State.selected.r === r && State.selected.c === c) {
-                State.selected = null;
-                renderBoard();
-                return;
+                State.selected = null; renderBoard(); return;
             }
 
             State.selected = {r, c};
@@ -1297,23 +1091,26 @@
                     if (cell.val !== State.lockedNumber) {
                         setLock(cell.val, false);
                     } else {
-                        renderBoard();
+                        if (State.notesMode) {
+			    if (cell.initial) return;
+                            saveHistory(); cell.val = 0; cell.notes[State.lockedNumber] = true;
+                            renderBoard(); saveGameState(); checkWin(); return;
+                        } else {
+                            setLock(null);
+                        }
                     }
                 } else {
                     applyInput(State.lockedNumber, r, c);
                 }
                 return;
             }
-
             renderBoard();
         }
 
         function applyInput(val, r = null, c = null) {
             if (State.isWon || State.isPaused) return;
-            
             const targetR = r !== null ? r : (State.selected ? State.selected.r : null);
             const targetC = c !== null ? c : (State.selected ? State.selected.c : null);
-            
             if (targetR === null || targetC === null) return;
             
             const cell = State.grid[targetR][targetC];
@@ -1323,8 +1120,7 @@
 
             if (val === 0) {
                 setLock(null);
-                if (cell.val !== 0) cell.val = 0;
-                else cell.notes = Array(10).fill(false);
+                if (cell.val !== 0) cell.val = 0; else cell.notes = Array(10).fill(false);
             } else {
                 if (State.notesMode) {
                     if (cell.val === 0) cell.notes[val] = !cell.notes[val];
@@ -1332,72 +1128,49 @@
                     cell.val = (cell.val === val) ? 0 : val; 
                     if (cell.val !== 0) {
                         for(let i=0; i<9; i++) {
-                            State.grid[targetR][i].notes[val] = false;
-                            State.grid[i][targetC].notes[val] = false;
+                            State.grid[targetR][i].notes[val] = false; State.grid[i][targetC].notes[val] = false;
                         }
-                        let br = Math.floor(targetR/3)*3;
-                        let bc = Math.floor(targetC/3)*3;
-                        for(let i=0; i<3; i++) {
-                            for(let j=0; j<3; j++) {
-                                State.grid[br+i][bc+j].notes[val] = false;
-                            }
-                        }
+                        let br = Math.floor(targetR/3)*3, bc = Math.floor(targetC/3)*3;
+                        for(let i=0; i<3; i++) for(let j=0; j<3; j++) State.grid[br+i][bc+j].notes[val] = false;
 
                         let counts = getBoardCounts();
                         if (counts[val] === 9 && State.lockedNumber === val) {
                             let nextVal = null;
                             for(let i=1; i<=9; i++) {
                                 let testVal = ((val + i - 1) % 9) + 1;
-                                if (counts[testVal] < 9) {
-                                    nextVal = testVal; break;
-                                }
+                                if (counts[testVal] < 9) { nextVal = testVal; break; }
                             }
-                            if (nextVal !== null) setLock(nextVal, true);
-                            else setLock(null);
+                            if (nextVal !== null) setLock(nextVal, true); else setLock(null);
                         }
-                    } else {
-                        setLock(null);
-                    }
+                    } else { setLock(null); }
                 }
             }
-
-            renderBoard();
-            saveGameState();
-            checkWin();
+            renderBoard(); saveGameState(); checkWin();
         }
 
         function undo() {
             if (State.history.length === 0 || State.isWon || State.isPaused) return;
             State.future.push(JSON.parse(JSON.stringify(State.grid)));
             State.grid = State.history.pop();
-            renderBoard();
-            saveGameState();
-            checkWin(); 
+            renderBoard(); saveGameState(); checkWin(); 
         }
 
         function redo() {
             if (State.future.length === 0 || State.isWon || State.isPaused) return;
             State.history.push(JSON.parse(JSON.stringify(State.grid)));
             State.grid = State.future.pop();
-            renderBoard();
-            saveGameState();
-            checkWin();
+            renderBoard(); saveGameState(); checkWin();
         }
 
         function checkWin() {
             let isComplete = true;
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
-                    if (State.grid[r][c].val !== State.solution[r][c]) {
-                        isComplete = false;
-                        break;
-                    }
+                    if (State.grid[r][c].val !== State.solution[r][c]) { isComplete = false; break; }
                 }
                 if(!isComplete) break;
             }
-            if(isComplete && !State.isWon) {
-                handleWin();
-            }
+            if(isComplete && !State.isWon) handleWin();
         }
 
         async function playWinTune() {
@@ -1409,71 +1182,61 @@
                 const durations = ["16n", "16n", "16n", "4n"];
                 let time = now;
                 for (let i = 0; i < notes.length; i++) {
-                    let durationVal = window.Tone.Time(durations[i]).toSeconds();
                     synth.triggerAttackRelease(notes[i], durations[i], time);
-                    time += durationVal;
+                    time += window.Tone.Time(durations[i]).toSeconds();
                 }
-            } catch (e) {
-                console.log('Audio disabled or failed to load:', e);
-            }
+            } catch (e) { console.log('Audio disabled/failed:', e); }
         }
 
         function populateStatsModal() {
             UI.statsList.innerHTML = '';
             const labels = { easy: "Easy", medium: "Medium", hard: "Hard", unfair: "Unfair", extreme: "Extreme" };
-            
             Object.keys(labels).forEach(diff => {
                 const times = State.topTimes[diff] || [];
                 const bestTime = times.length > 0 ? formatTime(times[0]) : '--:--';
-                
                 const row = document.createElement('div');
                 row.className = "flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100";
-                row.innerHTML = `
-                    <span class="font-bold text-slate-700">${labels[diff]}</span>
-                    <span class="font-mono font-medium text-slate-600">${bestTime}</span>
-                `;
+                row.innerHTML = `<span class="font-bold text-slate-700">${labels[diff]}</span><span class="font-mono font-medium text-slate-600">${bestTime}</span>`;
                 UI.statsList.appendChild(row);
             });
         }
 
         function handleWin() {
-            State.isWon = true;
-            clearInterval(State.timerInterval);
+            State.isWon = true; clearInterval(State.timerInterval);
             const ms = State.accumulatedTime + (Date.now() - State.lastStartTime);
-            
-            const diffTimes = State.topTimes[State.diff];
-            diffTimes.push(ms);
-            diffTimes.sort((a, b) => a - b);
-            if (diffTimes.length > 3) diffTimes.pop();
-            
-            saveTopTimes();
-            saveGameState();
-            updateHeaderUI();
 
-            UI.winDiff.textContent = State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
-            UI.winTime.textContent = formatTime(ms);
-            UI.winModal.classList.add('modal-enter-active');
-            
-            playWinTune();
-        }
+	    // Only save top times if it's NOT a custom puzzle
+    	    if (!State.isCustom) {
+        	const diffTimes = State.topTimes[State.diff];
+        	diffTimes.push(ms); diffTimes.sort((a, b) => a - b);
+        	if (diffTimes.length > 3) diffTimes.pop();
+        	saveTopTimes(); 
+  	    }
+    
+    	    saveGameState(); updateHeaderUI();
+    
+    	    // Update win screen text
+    	    UI.winDiff.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+    	    UI.winTime.textContent = formatTime(ms);
+    	    UI.winModal.classList.add('modal-enter-active');
+    	    playWinTune();
+	}
 
         function setupEventListeners() {
             let confirmAction = 'reset';
+            let pendingLoadState = null;
             
-            UI.btnSettings.addEventListener('click', () => {
-                UI.settingsModal.classList.add('modal-enter-active');
-            });
+            UI.btnSettings.addEventListener('click', () => UI.settingsModal.classList.add('modal-enter-active'));
+            UI.btnCloseSettings.addEventListener('click', () => { UI.settingsModal.classList.remove('modal-enter-active'); renderBoard(); });
 
-            UI.btnStatsModal.addEventListener('click', () => {
-                populateStatsModal();
-                UI.statsModal.classList.add('modal-enter-active');
-            });
-            UI.closeStats.addEventListener('click', () => {
-                UI.statsModal.classList.remove('modal-enter-active');
-            });
+            UI.btnStatsModal.addEventListener('click', () => { populateStatsModal(); UI.statsModal.classList.add('modal-enter-active'); });
+            UI.closeStats.addEventListener('click', () => UI.statsModal.classList.remove('modal-enter-active'));
 
             UI.btnPauseH1.addEventListener('click', togglePause);
             UI.btnResumeOverlay.addEventListener('click', togglePause);
+            UI.btnPauseNew.addEventListener('click', () => {
+                UI.diffModal.classList.add('fade-enter-active');
+            });
             
             UI.btnResetOverlay.addEventListener('click', () => {
                 confirmAction = 'reset';
@@ -1487,19 +1250,20 @@
             UI.btnConfirmYes.addEventListener('click', () => {
                 if (confirmAction === 'reset') executeReset();
                 else if (confirmAction === 'clear_notes') executeClearNotes();
-                else if (confirmAction === 'new') startNewGame();
-            });
-
-            UI.btnCloseSettings.addEventListener('click', () => {
-                UI.settingsModal.classList.remove('modal-enter-active');
-                renderBoard();
-            });
-            
-            UI.diffBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    State.diff = e.currentTarget.dataset.diff;
-                    updateDifficultyButtons();
-                });
+                else if (confirmAction === 'save_game') {
+                    let saves = JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}');
+                    saves[State.diff] = loadGameState(); 
+                    localStorage.setItem('sudoku_saved_games', JSON.stringify(saves));
+                    UI.confirmModal.classList.remove('fade-enter-active');
+                }
+                else if (confirmAction === 'load_save') {
+                    restoreGameState(pendingLoadState);
+                    UI.confirmModal.classList.remove('fade-enter-active');
+                }
+                else if (confirmAction === 'import_data') {
+                    UI.confirmModal.classList.remove('fade-enter-active');
+                    UI.fileInput.click();
+                }
             });
 
             UI.winDiffBtns.forEach(btn => {
@@ -1510,153 +1274,213 @@
             });
             UI.btnDiffCancel.addEventListener('click', () => UI.diffModal.classList.remove('fade-enter-active'));
 
-            Object.values(UI.toggles).forEach(toggle => {
-                toggle.addEventListener('change', renderBoard);
-            });
-
+            Object.values(UI.toggles).forEach(toggle => toggle.addEventListener('change', renderBoard));
             UI.toggleCandidates.addEventListener('change', renderBoard);
+            
+            UI.btnToggleColors.addEventListener('click', () => {
+                State.showColors = !State.showColors;
+                UI.btnToggleColors.innerHTML = State.showColors ? '<i class="fas fa-eye text-lg"></i>' : '<i class="fas fa-eye-slash text-lg"></i>';
+                renderBoard();
+            });
 
             UI.colorBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    if (State.selected && !State.isWon && !State.isPaused) {
-                        saveHistory();
-                        let color = e.currentTarget.dataset.color;
-                        State.grid[State.selected.r][State.selected.c].color = color === 'none' ? null : color;
-                        renderBoard();
-                        saveGameState();
-                    }
+                let holdTimeout;
+                let isHold = false;
+                const color = btn.dataset.color;
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault(); isHold = false; btn.style.transform = 'scale(0.85)';
+                    holdTimeout = setTimeout(() => {
+                        isHold = true;
+                        if (color !== 'none') {
+                            saveHistory();
+                            for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+                                if(State.grid[r][c].color === color) State.grid[r][c].color = null;
+                            }
+                            renderBoard(); saveGameState();
+                            if(navigator.vibrate) navigator.vibrate(50);
+                        }
+                    }, 400); 
                 });
+                btn.addEventListener('pointerup', (e) => {
+                    e.preventDefault(); clearTimeout(holdTimeout); btn.style.transform = '';
+                    if (!isHold) setColorLock(color);
+                });
+                btn.addEventListener('pointerleave', () => { clearTimeout(holdTimeout); btn.style.transform = ''; });
+                btn.addEventListener('pointercancel', () => { clearTimeout(holdTimeout); btn.style.transform = ''; });
             });
 
-            UI.btnNewGame.addEventListener('click', () => {
-                confirmAction = 'new';
-                document.getElementById('confirm-title').textContent = 'Start New Game?';
-                document.getElementById('confirm-desc').textContent = 'Your current progress will be lost.';
-                document.getElementById('btn-confirm-yes').textContent = 'Start';
+            UI.btnCopyVals.addEventListener('click', () => {
+                let str = "";
+                for(let r=0; r<9; r++) for(let c=0; c<9; c++) str += State.grid[r][c].initial ? State.grid[r][c].val : "0";
+                navigator.clipboard.writeText(str);
+            });
+
+            UI.btnCreatePuzzle.addEventListener('click', () => {
+                const str = prompt("Paste an 81-character puzzle string (use 0 for empty cells):");
+                if (str && str.length === 81) startNewGame(str);
+            });
+
+            UI.btnSaveGame.addEventListener('click', () => {
+                let saves = JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}');
+                if (saves[State.diff]) {
+                    confirmAction = 'save_game';
+                    document.getElementById('confirm-title').textContent = 'Overwrite Save?';
+                    document.getElementById('confirm-desc').textContent = `You already have a saved game for ${State.diff}. Saving will overwrite it.`;
+                    document.getElementById('btn-confirm-yes').textContent = 'Overwrite';
+                    UI.settingsModal.classList.remove('modal-enter-active');
+                    UI.confirmModal.classList.add('fade-enter-active');
+                } else {
+                    saves[State.diff] = loadGameState();
+                    localStorage.setItem('sudoku_saved_games', JSON.stringify(saves));
+                }
+            });
+
+            UI.btnLoadGame.addEventListener('click', () => {
+                UI.loadGameList.innerHTML = '';
+                const saves = JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}');
+                const labels = { easy: "Easy", medium: "Medium", hard: "Hard", unfair: "Unfair", extreme: "Extreme" };
+                let hasSaves = false;
+
+                Object.keys(labels).forEach(diff => {
+                    if (saves[diff]) {
+                        hasSaves = true;
+                        const btn = document.createElement('button');
+                        btn.className = "w-full bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors flex justify-between px-6 items-center";
+                        let timeStr = formatTime(saves[diff].accumulatedTime || 0);
+                        btn.innerHTML = `<span>${labels[diff]}</span> <span class="font-mono font-medium text-slate-500">${timeStr}</span>`;
+                        
+                        btn.addEventListener('click', () => {
+                            pendingLoadState = saves[diff];
+                            confirmAction = 'load_save';
+                            document.getElementById('confirm-title').textContent = 'Load Saved Game?';
+                            document.getElementById('confirm-desc').textContent = 'Your current puzzle progress will be lost.';
+                            document.getElementById('btn-confirm-yes').textContent = 'Load';
+                            UI.loadGameModal.classList.remove('modal-enter-active');
+                            UI.settingsModal.classList.remove('modal-enter-active');
+                            UI.confirmModal.classList.add('fade-enter-active');
+                        });
+                        UI.loadGameList.appendChild(btn);
+                    }
+                });
+
+		if (!hasSaves) {
+  		      UI.loadGameList.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">No saved games found.</p>';
+  		}	   
+                                
+		UI.settingsModal.classList.remove('modal-enter-active');                
+		UI.loadGameModal.classList.add('modal-enter-active');
+            });
+
+            UI.closeLoadGame.addEventListener('click', () => {
+                UI.loadGameModal.classList.remove('modal-enter-active');
+            });
+
+            UI.btnExportData.addEventListener('click', () => {
+                const data = {
+                    topTimes: State.topTimes,
+                    savedGames: JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}'),
+                    currentState: loadGameState()
+                };
+                const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'sudoku_backup.json';
+                a.click(); URL.revokeObjectURL(url);
+            });
+
+            UI.btnImportData.addEventListener('click', () => {
+                confirmAction = 'import_data';
+                document.getElementById('confirm-title').textContent = 'Import Data?';
+                document.getElementById('confirm-desc').textContent = 'Your current progress and stats may be overwritten by the loaded file.';
+                document.getElementById('btn-confirm-yes').textContent = 'Import';
                 UI.settingsModal.classList.remove('modal-enter-active');
                 UI.confirmModal.classList.add('fade-enter-active');
+            });
+
+            UI.fileInput.addEventListener('change', (e) => {
+                if(!e.target.files.length) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if(data.topTimes) { State.topTimes = data.topTimes; saveTopTimes(); }
+                        if(data.savedGames) localStorage.setItem('sudoku_saved_games', JSON.stringify(data.savedGames));
+                        if(data.currentState) localStorage.setItem(SAVE_KEY, JSON.stringify(data.currentState));
+                        location.reload(); 
+                    } catch(err) { alert("Invalid backup file."); }
+                };
+                reader.readAsText(e.target.files[0]);
             });
             
             UI.btnWinNew.addEventListener('click', () => {
                 UI.winModal.classList.remove('modal-enter-active');
                 UI.diffModal.classList.add('fade-enter-active');
             });
-            UI.btnWinClose.addEventListener('click', () => {
-                UI.winModal.classList.remove('modal-enter-active');
-            });
+            UI.btnWinClose.addEventListener('click', () => UI.winModal.classList.remove('modal-enter-active'));
 
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    if (!State.isPaused && !State.isWon) {
-                        togglePause();
-                    }
+                    if (!State.isPaused && !State.isWon) togglePause();
                     saveGameState();
                 }
             });
-
-            window.addEventListener('beforeunload', () => {
-                saveGameState();
-            });
+            window.addEventListener('beforeunload', saveGameState);
 
             UI.btnUndo.addEventListener('click', undo);
             UI.btnRedo.addEventListener('click', redo);
             UI.btnErase.addEventListener('click', () => applyInput(0));
             
-            let notesHoldTimeout;
-            let isNotesHold = false;
-            
-            const startNotesHold = (e) => {
-                e.preventDefault(); 
-                isNotesHold = false;
-                UI.btnNotes.style.transform = 'scale(0.9)';
+            let notesHoldTimeout; let isNotesHold = false;
+            UI.btnNotes.addEventListener('pointerdown', (e) => {
+                e.preventDefault(); isNotesHold = false; UI.btnNotes.style.transform = 'scale(0.9)';
                 notesHoldTimeout = setTimeout(() => {
-                    isNotesHold = true;
-                    if(navigator.vibrate) navigator.vibrate(50);
+                    isNotesHold = true; if(navigator.vibrate) navigator.vibrate(50);
                     confirmAction = 'clear_notes';
                     document.getElementById('confirm-title').textContent = 'Clear All Notes?';
                     document.getElementById('confirm-desc').textContent = 'This will safely remove all candidate numbers from the entire board.';
                     document.getElementById('btn-confirm-yes').textContent = 'Clear Notes';
                     UI.confirmModal.classList.add('fade-enter-active');
                 }, 400); 
-            };
-
-            const endNotesHold = (e) => {
-                e.preventDefault();
-                clearTimeout(notesHoldTimeout);
-                UI.btnNotes.style.transform = '';
+            });
+            UI.btnNotes.addEventListener('pointerup', (e) => {
+                e.preventDefault(); clearTimeout(notesHoldTimeout); UI.btnNotes.style.transform = '';
                 if (!isNotesHold) {
                     State.notesMode = !State.notesMode;
                     UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
+                    renderBoard();
                 }
-            };
-
-            UI.btnNotes.addEventListener('pointerdown', startNotesHold);
-            UI.btnNotes.addEventListener('pointerup', endNotesHold);
+            });
             UI.btnNotes.addEventListener('pointerleave', () => { clearTimeout(notesHoldTimeout); UI.btnNotes.style.transform = ''; });
             UI.btnNotes.addEventListener('pointercancel', () => { clearTimeout(notesHoldTimeout); UI.btnNotes.style.transform = ''; });
 
-
             UI.board.addEventListener('pointerdown', (e) => {
                 const cell = e.target.closest('.sudoku-cell');
-                if (cell) {
-                    e.preventDefault(); 
-                    handleCellClick(parseInt(cell.dataset.r), parseInt(cell.dataset.c));
-                }
+                if (cell) { e.preventDefault(); handleCellClick(parseInt(cell.dataset.r), parseInt(cell.dataset.c)); }
             });
 
-            const keys = UI.keypad.querySelectorAll('.numpad-btn');
-            keys.forEach(btn => {
-                let holdTimeout;
-                let isHold = false;
-                const val = parseInt(btn.dataset.val);
-
-                const startHold = (e) => {
-                    e.preventDefault(); 
-                    isHold = false;
-                    btn.style.transform = 'scale(0.85)';
-                    
+            UI.keypad.querySelectorAll('.numpad-btn').forEach(btn => {
+                let holdTimeout; let isHold = false; const val = parseInt(btn.dataset.val);
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault(); isHold = false; btn.style.transform = 'scale(0.85)';
                     holdTimeout = setTimeout(() => {
                         isHold = true;
-                        if (State.lockedNumber === val) {
-                            setLock(null);
-                        } else {
-                            setLock(val, true);
-                            if(navigator.vibrate) navigator.vibrate(50);
-                        }
+                        if (State.lockedNumber === val) setLock(null);
+                        else { setLock(val, true); if(navigator.vibrate) navigator.vibrate(50); }
                     }, 400); 
-                };
-
-                const endHold = (e) => {
-                    e.preventDefault();
-                    clearTimeout(holdTimeout);
-                    btn.style.transform = '';
-                    
+                });
+                btn.addEventListener('pointerup', (e) => {
+                    e.preventDefault(); clearTimeout(holdTimeout); btn.style.transform = '';
                     if (!isHold) {
-                        if (State.lockedNumber === val) {
-                            setLock(null);
-                        } else if (State.lockedNumber !== null && State.lockedNumber !== val) {
-                            setLock(val, true);
-                        } else {
-                            applyInput(val);
-                        }
+                        if (State.lockedNumber === val) setLock(null);
+                        else if (State.lockedNumber !== null && State.lockedNumber !== val) setLock(val, true);
+                        else applyInput(val);
                     }
-                };
-
-                btn.addEventListener('pointerdown', startHold);
-                btn.addEventListener('pointerup', endHold);
-                btn.addEventListener('pointerleave', () => {
-                    clearTimeout(holdTimeout);
-                    btn.style.transform = '';
                 });
-                btn.addEventListener('pointercancel', () => {
-                    clearTimeout(holdTimeout);
-                    btn.style.transform = '';
-                });
+                btn.addEventListener('pointerleave', () => { clearTimeout(holdTimeout); btn.style.transform = ''; });
+                btn.addEventListener('pointercancel', () => { clearTimeout(holdTimeout); btn.style.transform = ''; });
             });
 
             document.addEventListener('keydown', (e) => {
                 if (State.isWon || State.isPaused) return;
-                
                 if (e.key === 'y' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
                 else if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); redo(); }
                 else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
@@ -1665,12 +1489,12 @@
                 else if (e.key === 'n') {
                     State.notesMode = !State.notesMode;
                     UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
+                    renderBoard();
                 }
             });
         }
 
         window.addEventListener('DOMContentLoaded', init);
-
     </script>
 </body>
 </html>
