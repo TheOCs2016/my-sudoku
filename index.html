@@ -116,7 +116,7 @@
         /* Highlight Styles */
         .sudoku-cell.highlight-area::before { 
             background-color: rgba(245, 187, 11, 0.3); 
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2); /* Vignette for areas */
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2); 
         }
         
         .sudoku-cell.selected::before { 
@@ -257,7 +257,7 @@
                     <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
                 </div>
                 <div class="flex flex-col items-center w-1/3">
-                    <span id="stat-diff" class="text-base sm:text-lg font-bold text-red-700 leading-tight">Easy</span>
+                    <span id="stat-diff" class="text-base sm:text-lg font-bold leading-tight">Easy</span>
                     <span id="stat-bank-rating" class="text-[10px] sm:text-xs font-semibold text-slate-500 lowercase tracking-wide hidden"></span>
                 </div>
                 <div class="flex items-center justify-center gap-2 w-1/3">
@@ -368,11 +368,11 @@
                     <button id="btn-diff-cancel" class="p-2 text-slate-400 active:text-slate-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 <div class="flex flex-col gap-3">
-                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="easy">Easy</button>
-                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="medium">Medium</button>
-                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="hard">Hard</button>
-                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="unfair">Unfair</button>
-                    <button class="win-diff-btn bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl active:bg-slate-200 transition-colors" data-diff="extreme">Extreme</button>
+                    <button class="win-diff-btn bg-blue-50 text-blue-600 border border-blue-200 font-bold py-3.5 rounded-xl active:bg-blue-100 transition-colors" data-diff="easy">Easy</button>
+                    <button class="win-diff-btn bg-emerald-50 text-emerald-600 border border-emerald-200 font-bold py-3.5 rounded-xl active:bg-emerald-100 transition-colors" data-diff="medium">Medium</button>
+                    <button class="win-diff-btn bg-amber-50 text-amber-600 border border-amber-200 font-bold py-3.5 rounded-xl active:bg-amber-100 transition-colors" data-diff="hard">Hard</button>
+                    <button class="win-diff-btn bg-orange-50 text-orange-600 border border-orange-200 font-bold py-3.5 rounded-xl active:bg-orange-100 transition-colors" data-diff="unfair">Unfair</button>
+                    <button class="win-diff-btn bg-red-50 text-red-600 border border-red-200 font-bold py-3.5 rounded-xl active:bg-red-100 transition-colors" data-diff="extreme">Extreme</button>
                 </div>
             </div>
         </div>
@@ -437,7 +437,7 @@
                 </div>
                 <h2 class="text-3xl font-bold text-slate-800 mb-2">Puzzle Solved!</h2>
                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8">
-                    <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold text-red-600"></span></p>
+                    <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold"></span></p>
                     <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Time: <span id="win-time" class="font-mono font-bold text-slate-800 text-lg"></span></p>
                 </div>
                 
@@ -852,7 +852,19 @@
         }
 
         function updateHeaderUI() {
-	    UI.diffDisplay.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            UI.diffDisplay.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            
+            const colorMap = {
+                easy: 'text-blue-600',
+                medium: 'text-emerald-600',
+                hard: 'text-amber-600',
+                unfair: 'text-orange-600',
+                extreme: 'text-red-600',
+                custom: 'text-black-600'
+            };
+            const activeColor = State.isCustom ? colorMap.custom : colorMap[State.diff];
+            UI.diffDisplay.className = `text-base sm:text-lg font-bold leading-tight ${activeColor}`;
+
             if (State.currentBankRating) {
                 const nVal = Math.round(State.currentBankRating * 10);
                 const mVal = TIER_M_VALUES[State.diff] || 99;
@@ -947,8 +959,8 @@
             let showCands = UI.toggleCandidates.checked;
             let validCands = showCands ? getValidCandidates() : null;
             
-            // Only show area highlight if notes mode is OFF
-            let showArea = State.showAreaHighlight && !State.notesMode;
+            // Show area highlight even in notes mode
+            let showArea = State.showAreaHighlight;
 
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
@@ -1092,12 +1104,11 @@
                         setLock(cell.val, false);
                     } else {
                         if (State.notesMode) {
-			    if (cell.initial) return;
+			                if (cell.initial) return;
                             saveHistory(); cell.val = 0; cell.notes[State.lockedNumber] = true;
                             renderBoard(); saveGameState(); checkWin(); return;
-                        } else {
-                            setLock(null);
                         }
+                        // Do not unlock when selecting a cell containing the locked number (outside notes mode)
                     }
                 } else {
                     applyInput(State.lockedNumber, r, c);
@@ -1215,8 +1226,20 @@
     
     	    saveGameState(); updateHeaderUI();
     
-    	    // Update win screen text
+    	    // Update win screen text and colour
     	    UI.winDiff.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            
+            const colorMap = {
+                easy: 'text-blue-600',
+                medium: 'text-emerald-600',
+                hard: 'text-amber-600',
+                unfair: 'text-orange-600',
+                extreme: 'text-red-600',
+                custom: 'text-black-600'
+            };
+            const activeColor = State.isCustom ? colorMap.custom : colorMap[State.diff];
+            UI.winDiff.className = `font-bold ${activeColor}`;
+
     	    UI.winTime.textContent = formatTime(ms);
     	    UI.winModal.classList.add('modal-enter-active');
     	    playWinTune();
@@ -1322,14 +1345,14 @@
 
             UI.btnSaveGame.addEventListener('click', () => {
                 let saves = JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}');
-                if (saves[State.diff]) {
+                if (saves[State.diff] && !State.isCustom) {
                     confirmAction = 'save_game';
                     document.getElementById('confirm-title').textContent = 'Overwrite Save?';
                     document.getElementById('confirm-desc').textContent = `You already have a saved game for ${State.diff}. Saving will overwrite it.`;
                     document.getElementById('btn-confirm-yes').textContent = 'Overwrite';
                     UI.settingsModal.classList.remove('modal-enter-active');
                     UI.confirmModal.classList.add('fade-enter-active');
-                } else {
+                } else if (!State.isCustom) {
                     saves[State.diff] = loadGameState();
                     localStorage.setItem('sudoku_saved_games', JSON.stringify(saves));
                 }
