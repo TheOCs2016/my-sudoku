@@ -1091,7 +1091,7 @@
                 renderBoard(); saveGameState(); return;
             }
 
-            if (State.lockedNumber === null && State.selected && State.selected.r === r && State.selected.c === c) {
+            if (State.selected && State.selected.r === r && State.selected.c === c) {
                 State.selected = null; renderBoard(); return;
             }
 
@@ -1108,7 +1108,8 @@
                             saveHistory(); cell.val = 0; cell.notes[State.lockedNumber] = true;
                             renderBoard(); saveGameState(); checkWin(); return;
                         }
-                        // Do not unlock when selecting a cell containing the locked number (outside notes mode)
+                        // Force the board to render so the area highlight becomes visible
+                        renderBoard();
                     }
                 } else {
                     applyInput(State.lockedNumber, r, c);
