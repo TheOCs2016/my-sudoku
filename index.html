@@ -119,17 +119,17 @@
         }
         
         .sudoku-cell.selected::before { 
-            background-color: rgba(245, 187, 11, 0.8) !important; 
+            background-color: rgba(245, 168, 11, 0.8) !important; 
         }
         
         /* Identical highlight (No vignette, lock OFF) */
         .sudoku-cell.highlight-identical::before { 
-            background-color: rgba(245, 168, 11, 0.8) !important; 
+            background-color: rgba(245, 136, 11, 0.8) !important; 
         }
         
         /* Identical highlight (Strong vignette, lock ON) */
         .sudoku-cell.highlight-identical-locked::before { 
-            background-color: rgba(245, 158, 11, 0.9) !important; 
+            background-color: rgba(245, 91, 11, 0.7) !important; 
             box-shadow: inset 0 0 15px rgba(0,0,0,0.5) !important;
         }
 
@@ -434,10 +434,13 @@
                     <i class="fas fa-trophy text-5xl text-red-600"></i>
                 </div>
                 <h2 class="text-3xl font-bold text-slate-800 mb-2">Puzzle Solved!</h2>
-                <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-8">
+                <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
                     <p class="text-slate-500 text-sm font-medium uppercase tracking-widest mb-1">Difficulty: <span id="win-diff" class="font-bold"></span></p>
                     <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Time: <span id="win-time" class="font-mono font-bold text-slate-800 text-lg"></span></p>
                 </div>
+                
+                <!-- NEW: Record Breaking Message Container -->
+                <div id="win-record-msg" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 hidden transition-all"></div>
                 
                 <button id="btn-win-new" class="w-full bg-red-600 text-white font-bold py-4 px-12 rounded-xl text-lg shadow-md mb-4 active:bg-red-700 transition-colors">
                     Play Another
@@ -643,6 +646,7 @@
             btnWinClose: document.getElementById('btn-win-close'),
             winDiff: document.getElementById('win-diff'),
             winTime: document.getElementById('win-time'),
+            winRecordMsg: document.getElementById('win-record-msg'),
 
             cells: [] 
         };
@@ -858,7 +862,7 @@
                 hard: 'text-amber-600',
                 unfair: 'text-orange-600',
                 extreme: 'text-red-600',
-                custom: 'text-black-600'
+                custom: 'text-purple-600'
             };
             const activeColor = State.isCustom ? colorMap.custom : colorMap[State.diff];
             UI.diffDisplay.className = `text-base sm:text-lg font-bold leading-tight ${activeColor}`;
@@ -957,7 +961,6 @@
             let showCands = UI.toggleCandidates.checked;
             let validCands = showCands ? getValidCandidates() : null;
             
-            // Show area highlight even in notes mode
             let showArea = State.showAreaHighlight;
 
             for (let r = 0; r < 9; r++) {
@@ -989,7 +992,6 @@
                             let isNoteVisible = showCands ? (validCands[r][c] & (1<<(i-1))) !== 0 : data.notes[i];
                             span.textContent = isNoteVisible ? i : '';
                             
-                            // Notes mode identical highlight mapping (No vignette applied to notes per CSS)
                             if (isNoteVisible && highlightVal === i && UI.toggles.ident.checked) span.classList.add('highlight-identical');
                             else span.classList.remove('highlight-identical');
                         }
@@ -1011,10 +1013,9 @@
                         if (isSameRow && isSameCol) { root.classList.remove('highlight-area'); root.classList.add('selected'); }
                     }
 
-                    // Identical answered numbers handling
                     if (highlightVal !== null && data.val === highlightVal) {
-                        if (State.lockedNumber !== null) root.classList.add('highlight-identical-locked'); // Strong vignette
-                        else root.classList.add('highlight-identical'); // No vignette
+                        if (State.lockedNumber !== null) root.classList.add('highlight-identical-locked'); 
+                        else root.classList.add('highlight-identical'); 
                     }
 
                     if (UI.toggles.conflict.checked && conflicts[r][c]) root.classList.add('conflict');
@@ -1082,7 +1083,6 @@
             if (State.isWon || State.isPaused) return;
             const cell = State.grid[r][c];
 
-            // Color application via lock
             if (State.lockedColor !== null) {
                 saveHistory();
                 cell.color = (cell.color === State.lockedColor) ? null : State.lockedColor;
@@ -1101,8 +1101,7 @@
                     if (cell.val !== State.lockedNumber) {
                         setLock(cell.val, false);
                     } else {
-                        // Force the board to render so the area highlight becomes visible
-                        renderBoard();
+                        renderBoard(); 
                     }
                 } else {
                     applyInput(State.lockedNumber, r, c);
@@ -1210,18 +1209,49 @@
             State.isWon = true; clearInterval(State.timerInterval);
             const ms = State.accumulatedTime + (Date.now() - State.lastStartTime);
 
-	    // Only save top times if it's NOT a custom puzzle
-    	    if (!State.isCustom) {
-        	const diffTimes = State.topTimes[State.diff];
-        	diffTimes.push(ms); diffTimes.sort((a, b) => a - b);
-        	if (diffTimes.length > 3) diffTimes.pop();
-        	saveTopTimes(); 
-  	    }
+            UI.winRecordMsg.classList.add('hidden');
+
+            if (!State.isCustom) {
+                const diffTimes = State.topTimes[State.diff];
+                const previousBest = diffTimes.length > 0 ? diffTimes[0] : null;
+
+                if (previousBest !== null && ms < previousBest) {
+                    const diffMs = previousBest - ms;
+                    const diffSec = Math.floor(diffMs / 1000);
+                    const m = Math.floor(diffSec / 60);
+                    const s = diffSec % 60;
+                    
+                    let diffStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+                    
+                    UI.winRecordMsg.innerHTML = `
+                        <div class="text-emerald-600 font-bold text-lg mb-2"><i class="fas fa-crown text-yellow-500"></i> New Record!</div>
+                        <div class="flex justify-between items-center text-sm text-slate-500 mb-1 px-2">
+                            <span>Previous:</span> <span class="font-mono line-through">${formatTime(previousBest)}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-emerald-700 font-bold mb-3 px-2">
+                            <span>New Best:</span> <span class="font-mono">${formatTime(ms)}</span>
+                        </div>
+                        <div class="text-xs font-bold capitalize tracking-widest text-emerald-600 bg-emerald-100/70 rounded-md py-1.5">
+                            Beat by ${diffStr} 🔥
+                        </div>
+                    `;
+                    UI.winRecordMsg.classList.remove('hidden');
+                } else if (previousBest === null) {
+                    UI.winRecordMsg.innerHTML = `
+                        <div class="text-emerald-600 font-bold text-lg mb-1"><i class="fas fa-award"></i> New Record!</div>
+                        <div class="text-sm text-emerald-700/80 font-medium">You set the baseline time for this level.</div>
+                    `;
+                    UI.winRecordMsg.classList.remove('hidden');
+                }
+
+                diffTimes.push(ms); diffTimes.sort((a, b) => a - b);
+                if (diffTimes.length > 3) diffTimes.pop();
+                saveTopTimes(); 
+            }
     
-    	    saveGameState(); updateHeaderUI();
+            saveGameState(); updateHeaderUI();
     
-    	    // Update win screen text and colour
-    	    UI.winDiff.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
+            UI.winDiff.textContent = State.isCustom ? 'Custom' : State.diff.charAt(0).toUpperCase() + State.diff.slice(1);
             
             const colorMap = {
                 easy: 'text-blue-600',
@@ -1229,15 +1259,15 @@
                 hard: 'text-amber-600',
                 unfair: 'text-orange-600',
                 extreme: 'text-red-600',
-                custom: 'text-black-600'
+                custom: 'text-purple-600'
             };
             const activeColor = State.isCustom ? colorMap.custom : colorMap[State.diff];
             UI.winDiff.className = `font-bold ${activeColor}`;
 
-    	    UI.winTime.textContent = formatTime(ms);
-    	    UI.winModal.classList.add('modal-enter-active');
-    	    playWinTune();
-	}
+            UI.winTime.textContent = formatTime(ms);
+            UI.winModal.classList.add('modal-enter-active');
+            playWinTune();
+        }
 
         function setupEventListeners() {
             let confirmAction = 'reset';
