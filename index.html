@@ -1101,11 +1101,6 @@
                     if (cell.val !== State.lockedNumber) {
                         setLock(cell.val, false);
                     } else {
-                        if (State.notesMode) {
-			                if (cell.initial) return;
-                            saveHistory(); cell.val = 0; cell.notes[State.lockedNumber] = true;
-                            renderBoard(); saveGameState(); checkWin(); return;
-                        }
                         // Force the board to render so the area highlight becomes visible
                         renderBoard();
                     }
