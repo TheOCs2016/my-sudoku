@@ -1231,7 +1231,7 @@
                         <div class="flex justify-between items-center text-sm text-emerald-700 font-bold mb-3 px-2">
                             <span>New Best:</span> <span class="font-mono">${formatTime(ms)}</span>
                         </div>
-                        <div class="text-xs font-bold capitalize tracking-widest text-emerald-600 bg-emerald-100/70 rounded-md py-1.5">
+                        <div class="text-xs font-bold capitalize text-emerald-600 bg-emerald-100/70 rounded-md py-1.5">
                             Beat by ${diffStr} 🔥
                         </div>
                     `;
@@ -1239,7 +1239,7 @@
                 } else if (previousBest === null) {
                     UI.winRecordMsg.innerHTML = `
                         <div class="text-emerald-600 font-bold text-lg mb-1"><i class="fas fa-award"></i> New Record!</div>
-                        <div class="text-sm text-emerald-700/80 font-medium">You set the baseline time for this level.</div>
+                        <div class="text-sm text-emerald-700/80 font-medium">You've set the baseline time for this level.</div>
                     `;
                     UI.winRecordMsg.classList.remove('hidden');
                 }
