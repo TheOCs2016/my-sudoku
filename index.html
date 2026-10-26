@@ -252,7 +252,10 @@
             <div class="flex justify-between items-center mb-1 shrink-0 px-6 w-full text-slate-600">
                 <div class="flex items-center justify-center gap-2 w-1/3">
                     <i class="fas fa-trophy text-slate-400"></i>
-                    <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
+                    <div class="flex flex-col items-start leading-tight">
+                        <span id="stat-record" class="font-mono text-sm sm:text-base font-medium">--:--</span>
+                        <span id="stat-max-record" class="font-mono text-[14px] sm:text-xs text-slate-400 font-medium mt-0.5">--:--</span>
+                    </div>
                 </div>
                 <div class="flex flex-col items-center w-1/3">
                     <span id="stat-diff" class="text-base sm:text-lg font-bold leading-tight">Easy</span>
@@ -586,6 +589,7 @@
             keypad: document.getElementById('keypad'),
             timer: document.getElementById('stat-time'),
             record: document.getElementById('stat-record'),
+            maxRecord: document.getElementById('stat-max-record'),
             diffDisplay: document.getElementById('stat-diff'),
             bankRatingDisplay: document.getElementById('stat-bank-rating'),
             
@@ -662,6 +666,7 @@
             selected: null, 
             lockedNumber: null,
             lockedColor: null,
+            lockedNoteTapCount: 0,
             showAreaHighlight: true, 
             notesMode: false,
             showColors: true,
@@ -670,7 +675,8 @@
             isWon: false, isPaused: false,
             accumulatedTime: 0, lastStartTime: 0,
             currentBankRating: null,
-            topTimes: { easy: [], medium: [], hard: [], unfair: [], extreme: [] } 
+            topTimes: { easy: [], medium: [], hard: [], unfair: [], extreme: [] },
+            maxTimes: { easy: null, medium: null, hard: null, unfair: null, extreme: null }
         };
 
         function loadTopTimes() {
@@ -680,11 +686,27 @@
                     const parsed = JSON.parse(saved);
                     Object.keys(State.topTimes).forEach(k => { if (parsed[k]) State.topTimes[k] = parsed[k]; });
                 }
+                const savedMax = localStorage.getItem('sudoku_max_times_oc');
+                if (savedMax) {
+                    const parsedMax = JSON.parse(savedMax);
+                    Object.keys(State.maxTimes).forEach(k => { if (parsedMax[k] !== undefined) State.maxTimes[k] = parsedMax[k]; });
+                } else {
+                    // Retroactively initialize maxTimes from topTimes if starting max time tracking
+                    Object.keys(State.topTimes).forEach(k => {
+                        const times = State.topTimes[k];
+                        if (times && times.length > 0) {
+                            State.maxTimes[k] = times[times.length - 1]; 
+                        }
+                    });
+                }
             } catch(e){}
         }
 
         function saveTopTimes() {
-            try { localStorage.setItem('sudoku_top_times_oc', JSON.stringify(State.topTimes)); } catch(e){}
+            try { 
+                localStorage.setItem('sudoku_top_times_oc', JSON.stringify(State.topTimes)); 
+                localStorage.setItem('sudoku_max_times_oc', JSON.stringify(State.maxTimes));
+            } catch(e){}
         }
 
         function saveGameState() {
@@ -713,6 +735,7 @@
             
             State.selected = null; State.isWon = false; State.isPaused = true; 
             State.lockedNumber = null; State.showAreaHighlight = true;
+            State.lockedNoteTapCount = 0;
             
             UI.btnNotes.classList.toggle('toggle-active', State.notesMode);
             UI.settingsModal.classList.remove('modal-enter-active');
@@ -843,6 +866,7 @@
             }
 
             State.selected = null; State.history = []; State.future = []; State.isWon = false;
+            State.lockedNoteTapCount = 0;
             if (State.isPaused) togglePause(); 
             
             UI.settingsModal.classList.remove('modal-enter-active');
@@ -873,8 +897,14 @@
                 UI.bankRatingDisplay.textContent = `${nVal} OF ${mVal}`;
                 UI.bankRatingDisplay.classList.remove('hidden');
             } else { UI.bankRatingDisplay.classList.add('hidden'); }
+            
             const times = State.topTimes[State.diff];
             UI.record.textContent = times.length > 0 ? formatTime(times[0]) : '--:--';
+            
+            const maxTime = State.maxTimes[State.diff];
+            if (UI.maxRecord) {
+                UI.maxRecord.textContent = maxTime ? formatTime(maxTime) : '--:--';
+            }
         }
 
         function resetTimer() {
@@ -915,6 +945,7 @@
                 }
             }
             State.history = []; State.future = []; State.selected = null;
+            State.lockedNoteTapCount = 0;
             if (State.isPaused) togglePause();
             resetTimer(); renderBoard();
             UI.confirmModal.classList.remove('fade-enter-active');
@@ -1089,7 +1120,29 @@
                 renderBoard(); saveGameState(); return;
             }
 
-            if (State.selected && State.selected.r === r && State.selected.c === c) {
+            const isSameCell = (State.selected && State.selected.r === r && State.selected.c === c);
+
+            if (State.lockedNumber !== null && State.notesMode && cell.val === 0) {
+                if (isSameCell) {
+                    State.lockedNoteTapCount = (State.lockedNoteTapCount || 0) + 1;
+                    if (State.lockedNoteTapCount === 1) { 
+                        applyInput(State.lockedNumber, r, c);
+                    } else if (State.lockedNoteTapCount === 2) { 
+                        State.selected = null;
+                        State.lockedNoteTapCount = 0;
+                        renderBoard();
+                    }
+                    return;
+                } else {
+                    State.lockedNoteTapCount = 0;
+                    State.selected = {r, c};
+                    State.showAreaHighlight = true;
+                    applyInput(State.lockedNumber, r, c);
+                    return;
+                }
+            }
+
+            if (isSameCell) {
                 State.selected = null; renderBoard(); return;
             }
 
@@ -1214,6 +1267,11 @@
             if (!State.isCustom) {
                 const diffTimes = State.topTimes[State.diff];
                 const previousBest = diffTimes.length > 0 ? diffTimes[0] : null;
+                
+                const currentMax = State.maxTimes[State.diff];
+                if (currentMax === null || ms > currentMax) {
+                    State.maxTimes[State.diff] = ms;
+                }
 
                 if (previousBest !== null && ms < previousBest) {
                     const diffMs = previousBest - ms;
@@ -1425,6 +1483,7 @@
             UI.btnExportData.addEventListener('click', () => {
                 const data = {
                     topTimes: State.topTimes,
+                    maxTimes: State.maxTimes,
                     savedGames: JSON.parse(localStorage.getItem('sudoku_saved_games') || '{}'),
                     currentState: loadGameState()
                 };
@@ -1449,7 +1508,9 @@
                 reader.onload = (ev) => {
                     try {
                         const data = JSON.parse(ev.target.result);
-                        if(data.topTimes) { State.topTimes = data.topTimes; saveTopTimes(); }
+                        if(data.topTimes) { State.topTimes = data.topTimes; }
+                        if(data.maxTimes) { State.maxTimes = data.maxTimes; }
+                        saveTopTimes();
                         if(data.savedGames) localStorage.setItem('sudoku_saved_games', JSON.stringify(data.savedGames));
                         if(data.currentState) localStorage.setItem(SAVE_KEY, JSON.stringify(data.currentState));
                         location.reload(); 
